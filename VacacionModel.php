@@ -141,33 +141,6 @@ class VacacionModel extends ModelBase{
         return $qryResult;
     }
 
-    public function listarCondicionComboEspecial($id_solicitante) {
-        $this->intra_db->usarUTF8();
-        
-        $query = "SELECT CASE WHEN EXISTS (
-                    SELECT 1 FROM TBINT_VACACIONES_TEMP 
-                    WHERE id_solicitante = '$id_solicitante'
-                  ) THEN 1 ELSE 0 END AS tiene_registros";
-        
-        $resultado = $this->intra_db->Consulta($query);
-        $tiene_registros = (is_object($resultado[0])) ? 
-                            $resultado[0]->tiene_registros : 
-                            $resultado[0]['tiene_registros'];
-        
-        if ($tiene_registros) {
-            $sql = "SELECT id_vaca_condicion, vaca_condicion 
-                    FROM TBINT_VACA_CONDICION 
-                    WHERE activo = 1";
-        } else {
-            $sql = "SELECT TOP 2 id_vaca_condicion, vaca_condicion 
-                    FROM TBINT_VACA_CONDICION 
-                    WHERE activo = 1 
-                    ORDER BY id_vaca_condicion ASC";
-        }
-        
-        return $this->intra_db->Consulta($sql);
-    }
-
     public function getNumProgramadas($idSolicitante,$idCondicion,$idVacacion=0){
         $this->intra_db->setCampos("SUM(num_dias) AS dias_total");
         $this->intra_db->setTabla("TBINT_VACACIONES");
@@ -1056,7 +1029,15 @@ class VacacionModel extends ModelBase{
         $response['idAuth'] = $rsp_id_autorizador;
         return $response;
     }
+    public function getDiasEliminar(){
+        
+        $this->intra_db->setCampos('valor');
+        $this->intra_db->setTabla("TBINT_VACA_CONFIG");
+        $this->intra_db->setCondicion("like","configuracion","%eliminar%");
+        $qryResult = $this->intra_db->Listar();
 
+        return $qryResult;
+    }
     public function eliminarLogicamente($idVacacion){
         $userInfo = $this->sessionObj->getUserInfo();
         $sqlQuery = "UPDATE TBINT_VACACIONES SET
@@ -1396,96 +1377,5 @@ class VacacionModel extends ModelBase{
 
         return $cadena;
     }
-
-    public function getDetallePeriodos($cod_trab, $cod_empr, $fecha_corte, $truncas) {
-        $date = DateTime::createFromFormat('d/m/Y', $fecha_corte);
-        $params = array(
-            array($cod_trab, SQLSRV_PARAM_IN),
-            array($cod_empr, SQLSRV_PARAM_IN),
-            array($date->format('Y-m-d'), SQLSRV_PARAM_IN),
-            array($truncas, SQLSRV_PARAM_IN)
-        );
-        
-        $sqlQuery = "{CALL USP_VACA_PERIODO_DETALLE(?,?,?,?)}";
-        $qryResult = $this->intra_db->CallSPWithResult($sqlQuery, $params);
-        
-        // Si no hay resultados, manejar caso de empleado sin periodos definidos
-        if (empty($qryResult)) {
-            // Obtener fecha de ingreso para crear periodos default
-            $regIngreso = $this->getFechaIngresoColaborador($cod_trab);
-            if (!empty($regIngreso)) {
-                $hoy = new DateTime(date('Y-m-d'));
-                $anioIngreso = $regIngreso[0]->FE_INGR_EMPR->format('Y');
-                $anioActual = date('Y');
-                
-                // Crear periodos desde el año de ingreso hasta el actual
-                $periodos = array();
-                
-                // Añadir periodo trunco actual
-                $periodos[] = (object) array(
-                    'CO_EMPR' => $cod_empr,
-                    'NO_EMPR' => 'ACFARMA',
-                    'CO_TRAB' => $cod_trab,
-                    'PE_VACA' => $anioActual.'-'.($anioActual+1),
-                    'GANADAS' => 0,
-                    'GOZADAS' => 0,
-                    'TRUNCAS' => $truncas,
-                    'SALDO' => $truncas,
-                    'ESTADO' => 'No Disponible'
-                );
-                
-                // Añadir periodo actual
-                $periodos[] = (object) array(
-                    'CO_EMPR' => $cod_empr,
-                    'NO_EMPR' => 'ACFARMA',
-                    'CO_TRAB' => $cod_trab,
-                    'PE_VACA' => ($anioActual-1).'-'.$anioActual,
-                    'GANADAS' => 30,
-                    'GOZADAS' => 0,
-                    'TRUNCAS' => 0,
-                    'SALDO' => 30,
-                    'ESTADO' => 'Pendiente'
-                );
-                
-                // Añadir periodos vencidos
-                for ($i = $anioActual-2; $i >= $anioIngreso; $i--) {
-                    $periodos[] = (object) array(
-                        'CO_EMPR' => $cod_empr,
-                        'NO_EMPR' => 'ACFARMA',
-                        'CO_TRAB' => $cod_trab,
-                        'PE_VACA' => $i.'-'.($i+1),
-                        'GANADAS' => 30,
-                        'GOZADAS' => 0,
-                        'TRUNCAS' => 0,
-                        'SALDO' => 30,
-                        'ESTADO' => 'Vencido'
-                    );
-                }
-                
-                return $periodos;
-            }
-        }
-        
-        return $qryResult;
-    }
-
-    public function getDnisJerarquia2($dni){
-		$params = array(
-			array(($dni? $dni: 0), SQLSRV_PARAM_IN)
-		);
-
-		$sqlQuery = "{CALL usp_asistencia_dnis(?)}";
-		$qryResult = $this->intra_db->CallSP3($sqlQuery, $params,true);
-
-		$concat="','";
-		$cadenadni="'";
-		if (count($qryResult)>0) {
-			foreach ($qryResult as $row) {
-				$cadenadni = $cadenadni.$row->NroEmpleado.$concat;
-			}
-		}
-		$cadenadni =substr($cadenadni, 0, -2);
-		return $cadenadni;
-	}
 
 }

@@ -80,86 +80,7 @@
         .weekend{
             font-weight: bold;
         }
-
-
-
-        /* Estilos para el panel y tabla de detalle de vacaciones por periodo */
-.panel-danger {
-    border-color: #b23535;
-}
-
-.panel-danger > .panel-heading {
-    background-color: #b23535;
-    color: white;
-    border-color: #b23535;
-    padding: 8px 15px;
-}
-
-#tblDetallePeriodos {
-    margin-bottom: 0;
-}
-
-#tblDetallePeriodos thead th {
-    background-color: #b23535;
-    color: white;
-    text-align: center;
-    vertical-align: middle;
-    font-weight: bold;
-    border: 1px solid #ddd;
-}
-
-#tblDetallePeriodos tbody td {
-    text-align: center;
-    vertical-align: middle;
-    padding: 6px;
-    border: 1px solid #ddd;
-}
-
-#tblDetallePeriodos tfoot tr.trTotal {
-    background-color: #f5f5f5;
-    font-weight: bold;
-}
-
-#tblDetallePeriodos tfoot td {
-    text-align: center;
-    vertical-align: middle;
-    padding: 6px;
-    border: 1px solid #ddd;
-}
-
-
     </style>
-
-<style>
-#tblDetallePeriodos {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-#tblDetallePeriodos th, 
-#tblDetallePeriodos td {
-    text-align: center;
-    padding: 6px;
-    border: 1px solid #ddd;
-}
-
-#tblDetallePeriodos thead th {
-    background-color: #b23535;
-    color: white;
-    font-weight: bold;
-}
-
-#tblDetallePeriodos tbody tr:nth-child(even) {
-    background-color: #f9f9f9;
-}
-
-#tblDetallePeriodos tfoot tr {
-    background-color: #f5f5f5;
-    font-weight: bold;
-}
-
-</style>
-    
 </head>
 <body>
     <div class="container-fluid">
@@ -376,12 +297,30 @@
                             <i class="glyphicon glyphicon-question-sign"></i> Fecha de Inicio y fin de Vacación (no incluir fecha de reingreso)
                         </div>
                     </div>
+
+                    <!-- <div class="col-md-8">
+                        <div class="form-group">
+                            <label class="col-md-5 control-label">Rango de fecha de vacaciones:</label>
+                            <div class="col-md-7">
+                                <div id="txtRango" style="background: #fff; cursor: pointer; padding: 5px 10px; border: 1px solid #ccc; width: 100%; margin-bottom: 5px;">
+                                    <i class="fa fa-calendar"></i>&nbsp;
+                                    <span></span> <i class="fa fa-caret-down pull-right"></i>
+                                </div>
+                            </div>
+                            <div class="col-md-12">
+                                <div class="alert alert-info ac-alert-info" role="alert">
+                                    <i class="glyphicon glyphicon-question-sign"></i> Fecha de Inicio y fin de Vacación (no incluir fecha de reingreso)
+                                </div>
+                            </div>
+                        </div>
+                    </div> -->
                 </div>
 
                 <div class="row">
                     <div class="col-md-12">
                         <div id="consolidadoContainer">
                             <table id="tblConsolidado" class="table datatable table-striped table-bordered table-hover toggle-arrow-tiny display nowrap" cellspacing="0" width="100%"></table>
+                            <table id="tbldetalleconsolidado" class="table datatable table-striped table-bordered table-hover toggle-arrow-tiny display nowrap" cellspacing="0" width="100%"></table>
                             <div class="alert alert-info ac-alert-info" role="alert">
                                 <i class="glyphicon glyphicon-question-sign"></i> <b>"Por programar"</b> se calcula:
                                 <ul>
@@ -394,34 +333,6 @@
                                     <i class="glyphicon glyphicon-question-sign"></i> La cantidad de dias a programar, incluye los días de la solicitud
                                 </div>
                             {{/edit}}
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Sección de Detalle de vacaciones por periodo -->
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="panel panel-danger">
-                            <div class="panel-heading">
-                                <h3 class="panel-title">Detalle de vacaciones por periodo</h3>
-                            </div>
-                            <div class="panel-body" style="padding: 0;">
-                                <table id="tblDetallePeriodos" class="table table-bordered" style="margin-bottom: 0;">
-                                    <thead>
-                                        <tr style="background-color: #b23535; color: white;">
-                                            <th style="text-align: center;">Periodo</th>
-                                            <th style="text-align: center;">Ganadas</th>
-                                            <th style="text-align: center;">Gozadas</th>
-                                            <th style="text-align: center;">Truncas</th>
-                                            <th style="text-align: center;">Saldo</th>
-                                            <th style="text-align: center;">Estado</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <!-- El contenido se llenará dinámicamente -->
-                                    </tbody>
-                                </table>
-                            </div>
                         </div>
                     </div>
                 </div>

@@ -255,9 +255,9 @@ class VacacionController extends ControllerBase {
 
         require $this->getDefaultModelName();
         require $this->getModelByName('BoletaGeneradores', 'boletageneradores');
+        require $this->getModelByName('Reporte', 'reporte');
         $vacacionModelObj  = new VacacionModel();
         $boletaGeneObj = new BoletaGeneradoresModel();
-
         $userInfo = $this->sessionObj->getUserInfo();
         $gerencias_gene = $boletaGeneObj->getGenerador("", "", $userInfo[0]->ID_USUARIO,3);
 
@@ -268,13 +268,11 @@ class VacacionController extends ControllerBase {
             $userInfoOfisis = $this->sessionObj->getInfoFromOfisis();
             $regFechaIngreso = $vacacionModelObj->getFechaIngresoColaborador($userInfo[0]->USUARIO);
 
-            $info['cod_trabajador'] = $userInfoOfisis[0]->CO_TRAB;
             $info['empresa'] = $userInfoOfisis[0]->EMPRESA;
             $info['gerencia'] = $userInfoOfisis[0]->GERENCIA;
             $info['area'] = $userInfoOfisis[0]->AREA;
             $info['id_solicitante'] = $userInfo[0]->ID_USUARIO;
             $info['fecha_ingreso'] = $regFechaIngreso[0]->FE_INGR_EMPR;
-            $info['fecha_corte'] = date('d-m-Y');
         }
 
         //Si envian el solicitante, devolver la fecha de ingreso del colaborador
@@ -283,14 +281,7 @@ class VacacionController extends ControllerBase {
             $regFechaIngreso = $vacacionModelObj->getFechaIngresoColaborador($userInfo[0]->USUARIO);
             $info['fecha_ingreso'] = $regFechaIngreso[0]->FE_INGR_EMPR;
         }
-
-        $info['cboCondicion'] = $vacacionModelObj->listarCondicionComboEspecial($userInfo[0]->ID_USUARIO);
-
-        /* */
-        // require $this->getModelByName('Reporte', 'reporte');
-        // $reporteModelObj = new ReporteModel();
-        // $reporteLista = $reporteModelObj->getReporteVacaciones($qry_fecha, $qry_empresa, $qry_gerencia, $qryDepartamento, $qry_area, $qry_seccion, $qry_colaborador, $dnis);
-        /* */
+        $info['cboCondicion'] = $vacacionModelObj->listarCondicionCombo();
 
         $this->view->showJSONPlane(array(
             'response'  => $info
@@ -323,66 +314,73 @@ class VacacionController extends ControllerBase {
             'response'  => $response
         ));
     }
-
-    
-
-    public function detallePeriodo()
-{
-    $this->sessionObj->checkJsonRequest();
-    
-    $idSolicitante = (isset($_REQUEST['qry_cod']) && $_REQUEST['qry_cod'] ? trim($_REQUEST['qry_cod']) : 0);
-    $empresa = (isset($_REQUEST['qry_emp']) && $_REQUEST['qry_emp'] ? trim($_REQUEST['qry_emp']) : '01');
-    $fechaCorte = (isset($_REQUEST['qry_fecha_corte']) && $_REQUEST['qry_fecha_corte'] ? trim($_REQUEST['qry_fecha_corte']) : date('d/m/Y'));
-
-    
-    $response = array();
-    
-    require $this->getModelByName('Reporte', 'reporte');
-    require $this->getDefaultModelName();
-    $vacacionModelObj = new VacacionModel();
-    $reporteModelObj = new ReporteModel();
-    
-    // Verificar si el usuario tiene acceso a esta información
-    $userInfo = $this->sessionObj->getUserInfo();
-    $userInfoOfisis = $this->sessionObj->getInfoFromOfisis();
-    $gerencia = $userInfoOfisis[0]->CO_UNID;
-    $departamento = $userInfoOfisis[0]->CO_DEPA;
-    $area = $userInfoOfisis[0]->CO_AREA;
-    $seccion = $userInfoOfisis[0]->CO_SEC;
+    public function listarConsolidadoDetalle(){
+        $this->sessionObj->checkJsonRequest();
+        $idSolicitante = (isset($_REQUEST['idSolicitante']) && $_REQUEST['idSolicitante'] ? trim($_REQUEST['idSolicitante']) : 0);
+        $idCondicion = (isset($_REQUEST['idCondicion']) && $_REQUEST['idCondicion'] ? trim($_REQUEST['idCondicion']) : 0);
+        $idSolicitud = (isset($_REQUEST['idSolicitud']) && $_REQUEST['idSolicitud'] ? trim($_REQUEST['idSolicitud']) : 0);
+        $empresa = (isset($_REQUEST['idemprealidad']) && $_REQUEST['idemprealidad'] ? trim($_REQUEST['idemprealidad']) : 0);
 
 
-    
-    $dnis = $vacacionModelObj->getDnisJerarquia2($userInfo[0]->DNI);
-    $reporteLista = $reporteModelObj->getReporteVacaciones($fechaCorte, $empresa, $gerencia, $departamento, $area, $seccion, '0', $dnis);
-    $ultimoPeriodo = end($reporteLista);
-    $trunco = $ultimoPeriodo->DIAS_PEND;;
+        require $this->getModelByName('Reporte', 'reporte');
+        require_once $this->getDefaultModelName();
+        $vacacionModelObj = new VacacionModel();
+        $reporteModelObj = new ReporteModel();
+        //getDetallePeriodos
+        $userInfo = $this->sessionObj->getUserInfo($idSolicitante);
+        $vacacion = $reporteModelObj->getReporteVacaciones(date('d/m/Y'),'01','','','','','',"'".$userInfo[0]->USUARIO."'");
+        $regProgramados = $vacacionModelObj->getNumProgramadas($idSolicitante,$idCondicion,$idSolicitud);
+        $registro = $this->_formatVacionesOfisis($vacacion,$regProgramados,$idCondicion);
+        $result = $reporteModelObj->getDetallePeriodos($userInfo[0]->USUARIO,$empresa,date('d/m/Y'),$registro["trunco"]);
+        // echo "<pre>";
+        // print_r($registro);
+        // print_r($result);
+        // print_r($userInfo);
+        // echo "</pre>";
 
-    
-    // Verificar si el usuario tiene permiso para ver esta información
-    // Si el usuario es el mismo solicitante, o si el solicitante está en la jerarquía del usuario
-    if($userInfo[0]->ID_USUARIO == $idSolicitante || strpos($dnis, "'".$idSolicitante."'") !== false || isset($_REQUEST['qry_key'])) {
-        $dnis = trim($dnis, "'");  // Elimina comillas simples al inicio y final
-        $dnis = str_replace("\'", "", $dnis);  // Elimina comillas escapadas
-        $periodos = $vacacionModelObj->getDetallePeriodos($dnis, $empresa, $fechaCorte, $trunco);
+        // echo $userInfo[0]->USUARIO.'|'.$empresa.'|'.date('d/m/Y').'|'.$registro["trunco"];
+        $a_actual = date("Y");
+        $a_anterior = $a_actual - 1;
+        $a_trasante = $a_anterior - 1;
+        $a_tras_ante = $a_trasante - 1;
+        if (count($result) == 0) {
+            $estados = [
+                "trunco" => ["estado" => "no disponible", "periodo" => "$a_actual-$a_anterior"],
+                "ganado" => ["estado" => "pendiente", "periodo" => "$a_anterior-$a_trasante"],
+                "vencido" => ["estado" => "vencidas", "periodo" => "$a_trasante-$a_tras_ante"]
+            ];
         
-        if($periodos) {
-            $response["Result"] = 'OK';
-            $response["Records"] = $periodos;
-        } else {
-            $response["Result"] = 'OK';
-            $response["Records"] = array(); // Devolver array vacío para evitar errores en el front
-            $response["Message"] = 'No se encontraron periodos para este colaborador';
+            foreach ($estados as $key => $data) {
+                if ($registro[$key] > 0) {
+                    $result[] = (object)[
+                        "CO_EMPR" => "",
+                        "NO_EMPR" => "",
+                        "CO_TRAB" => "",
+                        "NO_TRAB" => "",
+                        "FECHA_INGRESO" => "",
+                        "PE_VACA" => $data["periodo"],
+                        "GANADAS" => $key === "ganado" ? $registro[$key] : "0",
+                        "GOZADAS" => "0",
+                        "TRUNCAS" => $key === "trunco" ? $registro[$key] : "0",
+                        "SALDO" => $registro[$key],
+                        "ESTADO" => $data["estado"]
+                    ];
+                }
+            }
         }
-    } else {
-        $response["Result"] = 'ERROR';
-        $response["Message"] = 'No tiene permisos para consultar esta información';
-    }
-    
-    $this->view->showJSONPlane(array(
-        'response' => $response
-    ));
-}
+        //eliminamos los estados cerrados y total para que no aparezcan en la tabla
+        $filtrado = array_values(array_filter($result, function($item) {
+            return $item->ESTADO !== "Cerrado" && $item->ESTADO != "";
+        }));
+        $response['recordsTotal'] = 1;
+        $response['recordsFiltered'] = 1;
+        $response['data'] = $filtrado;
 
+        $this->view->showJSONPlane(array(
+            'response'  => $response
+        ));
+
+    }
     private function _formatVacionesOfisis($vacacion,$regProgramados,$idCondicion,$disponibleTipo=false){
         $periodos = array_reverse($vacacion);//Revertir, para empezar con los truncos, ganados y finalmente los vencidos
         
@@ -526,6 +524,17 @@ class VacacionController extends ControllerBase {
             $input = new CI_Input();
 
             $statusCantidadDias = $this->_validarCantidadDias($input->post(NULL));
+
+            // Validar que no se seleccione vacaciones truncas si tiene vacaciones vencidas o ganadas
+            // y que no se mezclen periodos en una misma solicitud
+            $postData = $input->post(NULL);
+            $validarCondicionTruncas = $this->_validarCondicionTruncas($postData['cboSolicitante'], $postData['cboCondicion'], $postData);
+            if(!$validarCondicionTruncas['status']){
+                $response["Message"] = $validarCondicionTruncas['mensaje'];
+                $this->view->showJSONPlane(array('response' => $response));
+                return;
+            }
+
             if($statusCantidadDias['status']){
                 $statusRangoFecha = $this->_validarFechas($input->post('txtFechaInicio'),$input->post('txtFechaFin'),$input->post('master'));
                 if($statusRangoFecha['Result'] === 'OK'){
@@ -566,19 +575,22 @@ class VacacionController extends ControllerBase {
         $idSolicitud = isset($reg['idSolicitud'])? $reg['idSolicitud'] : 0;
 
         $userInfo = $this->sessionObj->getUserInfo($reg['cboSolicitante']);
+        
         $vacacion = $reporteModelObj->getReporteVacaciones(date('d/m/Y'),'01','','','','','',"'".$userInfo[0]->USUARIO."'");
-
+        
         $regProgramados = $vacacionModelObj->getNumProgramadas($reg['cboSolicitante'],1,$idSolicitud);
+        
         $regProgramadosAcuenta = $vacacionModelObj->getNumProgramadas($reg['cboSolicitante'],2,$idSolicitud);
 
         $usoVaca = $this->_formatVacionesOfisis($vacacion,$regProgramados,1);
+
         //$aCuentaVaca = $this->_formatVacionesOfisis($vacacion,$regProgramadosAcuenta,2);
 
         $response = array('status' => false, 'mensaje' => '');
 
         //Validar que acabe sus vacaciones ganadas
         if($reg['cboCondicion'] == 2 && $usoVaca['por_programar'] > 0){
-            $response['mensaje'] = 'Primero debe consumir sus vacaciones ganadas, antes de usar las vacaciones truncas';
+            $response['mensaje'] = 'No puede seleccionar adelanto a cuenta de vacaciones truncas, si dispone de vacaciones vencidas o pendientes.';
             return $response;
         }
 
@@ -597,6 +609,58 @@ class VacacionController extends ControllerBase {
 
         return $response;
     }
+
+
+    /**
+     * Validar condición de vacaciones truncas y que no se mezclen periodos
+     */
+    private function _validarCondicionTruncas($idSolicitante, $condicion, $postData)
+    {
+        $result = array('status' => true, 'mensaje' => '');
+        
+        // Obtener el consolidado de vacaciones del JSON
+        $consolidado = json_decode($postData['tblConsolidado'], true);
+        $diasVencidos = isset($consolidado['vencido']) ? floatval($consolidado['vencido']) : 0;
+        $diasGanados = isset($consolidado['ganado']) ? floatval($consolidado['ganado']) : 0;
+        $diasTruncos = isset($consolidado['trunco']) ? floatval($consolidado['trunco']) : 0;
+        $programado = isset($consolidado['programado']) ? floatval($consolidado['programado']) : 0;
+        
+        // Validar que no se seleccione vacaciones truncas (condición 2) si hay vencidas o ganadas
+        if($condicion == '2'){
+            if($diasVencidos > 0 || $diasGanados > 0){
+                $result['status'] = false;
+                $result['mensaje'] = 'No puede seleccionar adelanto a cuenta de vacaciones truncas, si dispone de vacaciones vencidas o pendientes.';
+                return $result;
+            }
+        }
+        
+        // Validar que la cantidad de días solicitada no exceda el periodo seleccionado
+        $cantidadDias = intval($postData['txtCantidadDias']);
+        $disponiblesPeriodo = 0;
+        
+        if($condicion == '1') {
+            // Para condición 1, usar primero vencidas, luego ganadas
+            if($diasVencidos > 0) {
+                $disponiblesPeriodo = $diasVencidos - $programado;
+                $tipoVacacion = 'vencidas';
+            } else {
+                $disponiblesPeriodo = $diasGanados - $programado;
+                $tipoVacacion = 'pendientes';
+            }
+        } else if($condicion == '2') {
+            // Para condición 2, solo truncas
+            $disponiblesPeriodo = $diasTruncos - $programado;
+            $tipoVacacion = 'truncas';
+        }
+        
+        if($cantidadDias > $disponiblesPeriodo){
+            $result['status'] = false;
+            $result['mensaje'] = "Solo tienes disponible " . number_format($disponiblesPeriodo, 2) . " días en el periodo de vacaciones $tipoVacacion . Por favor, ajusta la cantidad de días solicitados.";
+        }
+        
+        return $result;
+    }
+
 
     public function buscarUsuario(){
         $this->sessionObj->checkJsonRequest();
@@ -774,18 +838,35 @@ class VacacionController extends ControllerBase {
             require $config->get('classesFolder') . 'Input.php';
             $vacacionModelObj = new VacacionModel();
             $input = new CI_Input();
-
+            $diaseliminar=$vacacionModelObj->getDiasEliminar();
             $userInfo = $this->sessionObj->getUserInfo();
             $regVacacion = $vacacionModelObj->getInfoVacacion($input->post('id_vacacion', true), 0);
-            $validacion = $this->_validarParaEliminar((array)$regVacacion[0], $userInfo[0]->ID_USUARIO,$input->post('master'));
-            if ($validacion['resultado']) {
-                //Eliminar logicamente y no eliminar archivos adjuntos
-                $vacacionModelObj->eliminarLogicamente($input->post('id_vacacion', true));
-                $this->sessionObj->RegisterAccion($this->getAppName().$funcion, __FUNCTION__, $input->post('id_vacacion', true));
-                $response["Result"] = 'OK';
-            } else {
-                $response["Message"] = $validacion['mensaje'];
+            //obtener fecha actual para comprar
+            $hoy = new DateTime(date('Y-m-d'));
+            $interval = $hoy->diff($regVacacion[0]->fecha_crea);
+            $dias = (int)$interval->format('%d');
+            if($dias<=$diaseliminar[0]->valor){
+    
+                // echo "<pre>";
+                // print_r($dias);
+                // print_r($regVacacion[0]->fecha_crea);
+                // echo "</pre>";
+                // exit;
+                $validacion = $this->_validarParaEliminar((array)$regVacacion[0], $userInfo[0]->ID_USUARIO,$input->post('master'));
+                if ($validacion['resultado']) {
+                    //Eliminar logicamente y no eliminar archivos adjuntos
+                    $vacacionModelObj->eliminarLogicamente($input->post('id_vacacion', true));
+                    $this->sessionObj->RegisterAccion($this->getAppName().$funcion, __FUNCTION__, $input->post('id_vacacion', true));
+                    $response["Result"] = 'OK';
+                } else {
+                    $response["Message"] = $validacion['mensaje'];
+                }
+
+            }else{
+                $response["Message"] = "Supera la fecha limite para eliminar el registro que es de 5 dias desde la fecha de creacion";
+                $response["Result"] = 'ERROR';
             }
+            
         } else {
             $response["Message"] = $gump->get_readable_errors(true);
         }

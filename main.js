@@ -3,6 +3,7 @@ var $ajaxGerencia;
 var $ajaxDepartamento;
 var $ajaxArea;
 var tblConsolidado;
+var tbldetalleconsolidado;
 var generador = false;
 
 /*var localeDate = {
@@ -569,34 +570,23 @@ $(function () {
     $("#qry_empresa").change();
 });
 
-// Modificación de la función setFunctionFormulario en main.js
-function setFunctionFormulario(editar, fechaInicio, fechaFin) {
+function setFunctionFormulario(editar,fechaInicio,fechaFin){
     editar = editar || false;
     var uso_vacaciones = 0;
 
     $('#divFechaInicio').datetimepicker(dateOptions);
-    $('#divFechaFin').datetimepicker(dateOptions);
-
-    // Inicializar la tabla de detalle si existe
-    if ($('#tblDetallePeriodos').length > 0) {
-        // Configurar estilos de la tabla
-        $('#tblDetallePeriodos thead th').css('background-color', '#b23535').css('color', 'white');
-        
-        // Cargar datos iniciales si ya se conoce el solicitante
-        if ($('#cboSolicitante').val()) {
-            cargarTablaPeriodos($('#cboSolicitante').val(), $('#qry_empresa').val(), $('#idSolicitud').val());
-        }
-    }
+	$('#divFechaFin').datetimepicker(dateOptions);
     
-    if(editar) {
+    if(editar){
         $('#divFechaInicio').data("DateTimePicker").minDate(moment().format('L'));
         $('#divFechaInicio').data("DateTimePicker").maxDate(moment(fechaFin.date).format('L'));
         $('#divFechaFin').data("DateTimePicker").minDate(moment(fechaInicio.date).format('L'));
-    } else {
+    }else{
         var optMinDate = moment().format('L');
         $('#divFechaInicio').data("DateTimePicker").minDate(optMinDate);
         $('#divFechaFin').data("DateTimePicker").minDate(optMinDate);
     }
+    
     
     var maxFecha = moment().endOf('year').add(2,'years');
     $('#divFechaFin').data("DateTimePicker").maxDate(maxFecha);
@@ -608,6 +598,82 @@ function setFunctionFormulario(editar, fechaInicio, fechaFin) {
     $('#divFechaFin').on("dp.change", function (e) {
         $('#divFechaInicio').data("DateTimePicker").maxDate(e.date);
     });
+
+    $('#cboCondicion').change(function(){
+        if($('#cboSolicitante').val() && $("#txtFechaInicio").val() && $("#txtFechaFin").val()){
+            var inicio = moment($("#txtFechaInicio").val(),'DD/MM/YYYY');
+            var fin = moment($("#txtFechaFin").val(),'DD/MM/YYYY');
+            validarTiempo(inicio, fin);
+        }
+    });
+    
+    /*if(editar){
+        var start = moment(fechaInicio.date);
+        var end = moment(fechaFin.date);
+    }else{
+        var start = '';
+        var end = '';
+    }*/
+
+    /*********************************************** FUNCIONES PARA LAS FECHAS **********************************************/
+    /*var optionDateRange = {
+        locale: localeDate,
+        autoUpdateInput: false,
+        format: "DD/MM/YYYY",
+        alwaysShowCalendars: true,
+        showDropdowns: true,
+        minDate: moment(),
+        maxYear: parseInt(moment().endOf('year').format('YYYY'))+2
+    }
+
+    if(editar){
+        optionDateRange.startDate = start;
+        optionDateRange.endDate = end;
+    }
+
+    $('#txtRango').daterangepicker(optionDateRange);
+
+    if(editar){
+        $('#txtRango span').html('<b>Desde:</b> '+start.format('L')+' <b>Hasta:</b> '+end.format('L'));
+    }
+
+    $('#txtRango').on('show.daterangepicker', function(ev, picker) {
+        if($('#cboCondicion').val() == '0'){
+            ev.preventDefault();
+            showConfirmWarning('Seleccione una condición');
+            return false;
+        }
+    });
+
+    $('#txtRango').on('apply.daterangepicker', function(ev, picker) {
+        $('#txtRango span').html('<b>Desde:</b> '+picker.startDate.format('L')+' <b>Hasta:</b> '+picker.endDate.format('L'));
+        start = picker.startDate;
+        end = picker.endDate;
+
+        var numDias = end.diff(start,'days') + 1;
+        $('#txtCantidadDias').val(numDias);
+
+        status = validarUsoDeVacaciones(uso_vacaciones);
+        if(status == 'false'){
+            return false;
+        }
+
+        loading(true,'Validando fechas');
+        $.post($getAppName+'/validarFechas/', { fechaInicio: picker.startDate.format('YYYY-MM-DD'), fechaFin: picker.endDate.format('YYYY-MM-DD') }, function(data) {
+            loading(false);
+            if (data.Result === 'OK') {
+                validarTiempo(picker.startDate,picker.endDate);
+            } else {
+                showConfirmWarning(data.Message);
+            }
+        }, 'json')
+        .fail(function() {
+            loading(false);
+            showConfirmError('Ocurrió un Error interno');
+            ev.preventDefault();
+            return false;
+        });
+    });*/
 
     $('#divFechaInicio').on("dp.show", function (e) {
         if($('#cboCondicion').val() == '0'){
@@ -636,12 +702,11 @@ function setFunctionFormulario(editar, fechaInicio, fechaFin) {
     $('#cboCondicion').change(function(){
         if($('#cboSolicitante').val()){
             tblConsolidado.ajax.reload();
-            // Cargar también la tabla de detalles por periodo
-            cargarTablaPeriodos($('#cboSolicitante').val(), $('#qry_empresa').val(), $('#idSolicitud').val());
+            tbldetalleconsolidado.ajax.reload();
         }
     });
 
-    // Tabla principal de consolidado
+    /*********************************************** TABLA DE VACACIONES CONSOLIDADA *********************************************/
     tblConsolidado = $('#tblConsolidado').DataTable({
         searching: false,
         processing: true,
@@ -649,7 +714,7 @@ function setFunctionFormulario(editar, fechaInicio, fechaFin) {
         responsive: true,
         autoWidth: true,
         lengthChange: false,
-        deferLoading: 0, // Deshabilitar el ajax automático
+        deferLoading: 0, //Deshabilitar el ajax automatico
         sorting: false,
         info: false,
         paging: false,
@@ -684,94 +749,54 @@ function setFunctionFormulario(editar, fechaInicio, fechaFin) {
         ]
     });
 
-    // Nueva tabla para mostrar detalle por periodo
-    // Este código añade la nueva tabla que aparece en la segunda imagen
-    // Función para cargar la tabla de detalle de periodos
-function cargarTablaPeriodos(idSolicitante, idCondicion, idSolicitud) {
-    if($('#tblDetallePeriodos').length > 0) {
-        $.post($getAppName+'/detallePeriodo/', {
-            qry_cod: idSolicitante,
-            qry_emp: '01', // Empresa predeterminada
-            qry_fecha_corte: moment().format('DD/MM/YYYY')
-        }, function(response) {
-            if(response.Result === 'OK') {
-                // Limpiar tabla
-                var tbodyHtml = '';
-                var ganadas = 0;
-                var gozadas = 0;
-                var truncas = 0;
-                var saldo = 0;
-
-                // Ordenar los periodos de más reciente a más antiguo
-                var periodos = response.Records.sort(function(a, b) {
-                    return b.PE_VACA.localeCompare(a.PE_VACA);
-                });
-
-                // Generar las filas de la tabla
-                $.each(periodos, function(index, record) {
-                    tbodyHtml += '<tr>';
-                    tbodyHtml += '<td>' + record.PE_VACA + '</td>';
-                    tbodyHtml += '<td>' + (parseFloat(record.GANADAS) || 0) + '</td>';
-                    tbodyHtml += '<td>' + (parseFloat(record.GOZADAS) || 0) + '</td>';
-                    tbodyHtml += '<td>' + (parseFloat(record.TRUNCAS) || 0).toFixed(2) + '</td>';
-                    tbodyHtml += '<td>' + (parseFloat(record.SALDO) || 0).toFixed(2) + '</td>';
-                    
-                    // Determinar el estilo del estado según su valor
-                    var estadoClass = '';
-                    if(record.ESTADO === 'Pendiente') estadoClass = 'text-success';
-                    else if(record.ESTADO === 'Vencido') estadoClass = 'text-danger';
-                    else if(record.ESTADO === 'No Disponible') estadoClass = 'text-warning';
-                    else if(record.ESTADO === 'Cerrado') estadoClass = 'text-muted';
-                    
-                    tbodyHtml += '<td class="' + estadoClass + '">' + record.ESTADO + '</td>';
-                    tbodyHtml += '</tr>';
-
-                    // Sumar los valores para los totales
-                    ganadas += parseFloat(record.GANADAS || 0);
-                    gozadas += parseFloat(record.GOZADAS || 0);
-                    truncas += parseFloat(record.TRUNCAS || 0);
-                    saldo += parseFloat(record.SALDO || 0);
-                });
-
-                // Actualizar el contenido de la tabla
-                $('#tblDetallePeriodos tbody').html(tbodyHtml);
-                
-                // Actualizar la fila de totales
-                $('#tblDetallePeriodos tfoot tr td:eq(1)').text(ganadas);
-                $('#tblDetallePeriodos tfoot tr td:eq(2)').text(gozadas);
-                $('#tblDetallePeriodos tfoot tr td:eq(3)').text(truncas.toFixed(2));
-                $('#tblDetallePeriodos tfoot tr td:eq(4)').text(saldo.toFixed(2));
-            } else {
-                // Si no hay datos, mostrar mensaje o tabla vacía
-                $('#tblDetallePeriodos tbody').html('<tr><td colspan="6" class="text-center">No hay periodos disponibles</td></tr>');
-                // Resetear totales
-                $('#tblDetallePeriodos tfoot tr td:eq(1)').text('0');
-                $('#tblDetallePeriodos tfoot tr td:eq(2)').text('0');
-                $('#tblDetallePeriodos tfoot tr td:eq(3)').text('0');
-                $('#tblDetallePeriodos tfoot tr td:eq(4)').text('0');
+    tbldetalleconsolidado = $('#tbldetalleconsolidado').DataTable({
+        searching: false,
+        processing: true,
+        serverSide: true,
+        responsive: true,
+        autoWidth: true,
+        lengthChange: false,
+        deferLoading: 0, //Deshabilitar el ajax automatico
+        sorting: false,
+        info: false,
+        paging: false,
+        ordering: false,
+        ajax: {
+            url: $getAppName+'/listarConsolidadoDetalle/',
+            type: 'POST',
+            data: function(){
+                var data = { 
+                    idSolicitante: $('#cboSolicitante').val(),
+                    idemprealidad: $('#qry_empresa').val(),
+                    idCondicion: $('#cboCondicion').val(),
+                    modificacion: editar,
+                    idSolicitud: $('#idSolicitud').val()
+                };
+                return data;
             }
-        }, 'json')
-        .fail(function() {
-            showConfirmError('Ocurrió un error al obtener el detalle de periodos');
-        });
-    }
-}
+        },
+        columns: [
+            { data: "PE_VACA", title : "Periodo"},
+            { data: "GANADAS", title : "GANADAS"},
+            { data: "GOZADAS", title : "GOZADAS"},
+            { data: 'TRUNCAS', title: 'TRUNCAS'},
+            { data: "SALDO", title : "Por SALDO"},
+            { data:"ESTADO", title: "Estado"}
+        ]
+    });
 
+    /*********************************************** FUNCIONES PARA LISTADO DE GENERADORES **********************************************/
     if($('#cboSolicitante').attr('type') == 'hidden'){
         tblConsolidado.ajax.reload();
-        // Cargar también la tabla de detalles por periodo
-        if($('#tblDetallePeriodos').length > 0) {
-            cargarTablaPeriodos($('#cboSolicitante').val(), $('#qry_empresa').val(), $('#idSolicitud').val());
-        }
-
-        // Obtener la cantidad de dias disponibles por "Uso de vacaciones"
+        tbldetalleconsolidado.ajax.reload();
+        //Obtener la cantidad de dias disponibles por "Uso de vacaciones"
         $.post($getAppName+'/listarConsolidado/', {idSolicitante: $('#cboSolicitante').val(), idCondicion: 1, idSolicitud: $('#idSolicitud').val()}, function(data) {
             uso_vacaciones = data.data[0].por_programar;                
         }, 'json')
         .fail(function() {
             showConfirmError('Ocurrió un Error al consultar la disponibilidad de "Uso de vacaciones"');
         });
-    } else {
+    }else{
         var opt = {
             ajax : {
                 url     : $getAppName+'/buscarSolicitante',
@@ -785,16 +810,16 @@ function cargarTablaPeriodos(idSolicitante, idCondicion, idSolicitud) {
             minLength: 3,
             preserveSelected: false,
             locale: {
-                emptyTitle: "Seleccione y comience a escribir",
-                currentlySelected: "Seleccionado",
-                searchPlaceholder: "Buscar...",
-                statusSearching: "Buscando...",
-                statusNoResults: "Sin Resultados",
-                statusInitialized: "Empieza a escribir una consulta de búsqueda",
-                statusSearching: "Buscando...",
-                statusTooShort: 'Introduzca más caracteres',
-                errorText: "No se puede recuperar resultados",
-            },
+				emptyTitle: "Seleccione y comience a escribir",
+				currentlySelected: "Seleccionado",
+				searchPlaceholder: "Buscar...",
+				statusSearching: "Buscando...",
+				statusNoResults: "Sin Resultados",
+				statusInitialized: "Empieza a escribir una consulta de búsqueda",
+				statusSearching: "Buscando...",
+				statusTooShort: 'Introduzca más caracteres',
+				errorText: "No se puede recuperar resultados",
+			},
             preprocessData: function (data) {
                 var i, l = data.length, array = [];
                 if (l) {
@@ -824,13 +849,8 @@ function cargarTablaPeriodos(idSolicitante, idCondicion, idSolicitud) {
             var fechaIngreso = data.fecha_ingreso;
             $('#txtFechaIngreso').val(fechaIngreso);
             tblConsolidado.ajax.reload();
-
-            // Cargar también la tabla de detalles por periodo
-            if($('#tblDetallePeriodos').length > 0) {
-                cargarTablaPeriodos(data.id_solicitante, $('#qry_empresa').val(), $('#idSolicitud').val());
-            }
-
-            // Obtener la cantidad de dias disponibles por "Uso de vacaciones"
+            tbldetalleconsolidado.ajax.reload();
+            //Obtener la cantidad de dias disponibles por "Uso de vacaciones"
             $.post($getAppName+'/listarConsolidado/', {idSolicitante: data.id_solicitante, idCondicion: 1, idSolicitud: $('#idSolicitud').val()}, function(data) {
                 uso_vacaciones = data.data[0].por_programar;                
             }, 'json')
@@ -839,82 +859,6 @@ function cargarTablaPeriodos(idSolicitante, idCondicion, idSolicitud) {
             });
         });
     }
-
-    // Función para cargar la tabla de periodos
-/**
- * Función para cargar la tabla de detalle de periodos
- * Esta versión simplificada se enfoca en calcular correctamente los totales
- */
-/**
- * Función para cargar la tabla de detalle de periodos sin mostrar totales
- */
-function cargarTablaPeriodos(idSolicitante, idEmpresa, idSolicitud) {
-    if($('#tblDetallePeriodos').length > 0) {
-        // Eliminar completamente el pie de tabla para evitar totales
-        $('#tblDetallePeriodos tfoot').remove();
-        
-        $.post($getAppName+'/detallePeriodo/', {
-            qry_cod: idSolicitante,
-            qry_emp: idEmpresa,
-            qry_fecha_corte: moment().format('DD/MM/YYYY'),
-            qry_trunco: 0
-        }, function(response) {
-            if(response.Result === 'OK' && response.Records && response.Records.length > 0) {
-                // Filtrar para excluir los estados "Cerrado"
-                var periodosFiltrados = [];
-                for(var i = 0; i < response.Records.length; i++) {
-                    if(response.Records[i].ESTADO !== 'Cerrado') {
-                        periodosFiltrados.push(response.Records[i]);
-                    }
-                }
-                
-                // Ordenar los periodos de más reciente a más antiguo
-                periodosFiltrados.sort(function(a, b) {
-                    return b.PE_VACA.localeCompare(a.PE_VACA);
-                });
-                
-                // Generar el HTML de las filas
-                var tbodyHtml = '';
-                
-                // Recorrer los periodos filtrados
-                for(var j = 0; j < periodosFiltrados.length; j++) {
-                    var periodo = periodosFiltrados[j];
-                    
-                    // Convertir a números para formateo
-                    var ganadas = Number(periodo.GANADAS) || 0;
-                    var gozadas = Number(periodo.GOZADAS) || 0;
-                    var truncas = Number(periodo.TRUNCAS) || 0;
-                    var saldo = Number(periodo.SALDO) || 0;
-                    
-                    // Generar la fila
-                    tbodyHtml += '<tr>';
-                    tbodyHtml += '<td>' + periodo.PE_VACA + '</td>';
-                    tbodyHtml += '<td>' + ganadas + '</td>';
-                    tbodyHtml += '<td>' + gozadas + '</td>';
-                    tbodyHtml += '<td>' + truncas.toFixed(2) + '</td>';
-                    tbodyHtml += '<td>' + saldo.toFixed(2) + '</td>';
-                    
-                    var estadoClass = '';
-                    if(periodo.ESTADO === 'Pendiente') estadoClass = 'text-success';
-                    else if(periodo.ESTADO === 'Vencido') estadoClass = 'text-danger';
-                    else if(periodo.ESTADO === 'No Disponible') estadoClass = 'text-warning';
-                    
-                    tbodyHtml += '<td class="' + estadoClass + '">' + periodo.ESTADO + '</td>';
-                    tbodyHtml += '</tr>';
-                }
-                
-                // Actualizar el cuerpo de la tabla
-                $('#tblDetallePeriodos tbody').html(tbodyHtml);
-            } else {
-                // Si no hay datos, mostrar mensaje
-                $('#tblDetallePeriodos tbody').html('<tr><td colspan="6" class="text-center">No hay periodos disponibles</td></tr>');
-            }
-        }, 'json')
-        .fail(function() {
-            showConfirmError('Ocurrió un error al obtener el detalle de periodos');
-        });
-    }
-}
 
     var btnLaddaSubmit = Ladda.create($('#btnSubmit')[0]);
     $('#frmModal').validate({
@@ -956,6 +900,8 @@ function cargarTablaPeriodos(idSolicitante, idEmpresa, idSolicitud) {
 
                     var regConsolidado = tblConsolidado.row(0).data();
                     var modalidad = ($('#cboSolicitante').attr('type') == 'hidden')?1:3;
+                    //arr.push({name: 'txtFechaInicio', value : inicio.format('YYYY-MM-DD')});
+                    //arr.push({name: 'txtFechaFin', value : fin.format('YYYY-MM-DD')});
                     arr.push({name: 'tblConsolidado', value : JSON.stringify(regConsolidado)});
                     arr.push({name: 'modalidad', value : modalidad});
                     return arr;                 
@@ -1000,6 +946,9 @@ function cargarTablaPeriodos(idSolicitante, idEmpresa, idSolicitud) {
             $('#frmModal').ajaxSubmit(options);
         }
     });
+
+    //$('#divFechaInicio').trigger('dp.change');
+	//$('#divFechaFin').trigger('dp.change');
 }
 
 function cambiarFechas(uso_vacaciones){
@@ -1053,33 +1002,53 @@ function loading(mostrar,mensaje){
     }
 }
 
-function validarTiempo(fechaInicio,fechaFin){
+// validar
+function validarTiempo(fechaInicio, fechaFin) {
     var condicion = $('#cboCondicion').val();
-    var numDias = fechaFin.diff(fechaInicio,'days') + 1;
+    var numDias = fechaFin.diff(fechaInicio, 'days') + 1;
     var regConsolidado = tblConsolidado.row(0).data();
     var disponible = 0;
 
     $('#txtCantidadDias').val(numDias);
 
-    if(regConsolidado){
-        if(condicion == '1'){
-            disponible = (regConsolidado.ganado + regConsolidado.vencido) - regConsolidado.programado; //uso vacaciones
-        }else{
-            disponible = regConsolidado.trunco - regConsolidado.programado; //uso a cuenta de vacaciones
+    if(!regConsolidado) return false;
+    
+    // Validar que no seleccione truncas si tiene vencidas o ganadas
+    if(condicion == '2') {
+        if(parseFloat(regConsolidado.vencido) > 0 || parseFloat(regConsolidado.ganado) > 0) {
+            showConfirmWarning('No puede seleccionar adelanto a cuenta de vacaciones truncas, si dispone de vacaciones vencidas o pendientes.');
+            return false;
         }
     }
+    
+    // Calcular disponibilidad según condición
+    if(condicion == '1') {
+        // Para condición 1, usar primero vencidas, luego ganadas
+        if(parseFloat(regConsolidado.vencido) > 0) {
+            disponible = parseFloat(regConsolidado.vencido) - parseFloat(regConsolidado.programado);
+            tipoVacacion = 'vencidas';
+        } else {
+            disponible = parseFloat(regConsolidado.ganado) - parseFloat(regConsolidado.programado);
+            tipoVacacion = 'pendientes';
+        }
+    } else if(condicion == '2') {
+        // Para condición 2, solo truncas
+        disponible = parseFloat(regConsolidado.trunco) - parseFloat(regConsolidado.programado);
+        tipoVacacion = 'truncas';
+    }
 
-    if(numDias > disponible){
-        showConfirmWarning('No puede exceder los días que tiene ganado: '+disponible+' días');
+    if(numDias > disponible) {
+        showConfirmWarning('Solo tienes disponible ' + disponible.toFixed(2) + ' días en el periodo de vacaciones ' + tipoVacacion + '. Por favor, ajusta la cantidad de días solicitados.');
         return false;
     }
+    
     return true;
 }
 
 function validarUsoDeVacaciones(usoDeVacaciones){
     var condicion = $('#cboCondicion').val();
     if(condicion == '2' && usoDeVacaciones > 0){
-        showConfirmWarning('Primero debe consumir sus vacaciones ganadas, antes de usar las vacaciones truncas');
+        showConfirmWarning('No puede seleccionar adelanto a cuenta de vacaciones truncas, si dispone de vacaciones vencidas o pendientes.');
         return false;
     }
 
