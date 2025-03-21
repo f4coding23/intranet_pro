@@ -393,6 +393,8 @@ class VacacionModel extends ModelBase{
         }
 
         $infoSucursal = $this->sessionObj->getInfoFromSucursalByEmpresa($userInfoOfisis[0]->CO_EMPR,1);
+        // primero debo de saber cuantos dias tengo en sp1 y sp2
+        // validar cuantos dias se iran al sp1 y cuales se iran al sp2
 
         $sqlQuery = " INSERT INTO dbo.TBINT_VACACIONES(id_empresa, id_sucursal, id_unidad, id_departamento, id_area, id_seccion, id_solicitante, fecha_ingreso, id_generador, idTipo, id_vaca_condicion, id_vaca_estado, fecha_inicio, fecha_fin, num_dias, confirmado, eliminado, fecha_crea, usu_crea) 
         VALUES (
@@ -1376,6 +1378,85 @@ class VacacionModel extends ModelBase{
         }
 
         return $cadena;
+    }
+
+    public function listarCondicionComboEspecial($id_solicitante) {
+        $this->intra_db->usarUTF8();
+        
+        $query = "SELECT CASE WHEN EXISTS (
+                    SELECT 1 FROM TBINT_VACACIONES_TEMP 
+                    WHERE id_solicitante = '$id_solicitante'
+                  ) THEN 1 ELSE 0 END AS tiene_registros";
+        
+        $resultado = $this->intra_db->Consulta($query);
+        $tiene_registros = (is_object($resultado[0])) ? 
+                            $resultado[0]->tiene_registros : 
+                            $resultado[0]['tiene_registros'];
+        
+        if ($tiene_registros) {
+            $sql = "SELECT id_vaca_condicion, vaca_condicion 
+                    FROM TBINT_VACA_CONDICION 
+                    WHERE activo = 1";
+        } else {
+            $sql = "SELECT TOP 2 id_vaca_condicion, vaca_condicion 
+                    FROM TBINT_VACA_CONDICION 
+                    WHERE activo = 1 
+                    ORDER BY id_vaca_condicion ASC";
+        }
+        
+        return $this->intra_db->Consulta($sql);
+    }
+
+    public function getFechaEspecial($fechaInicio,$fechaFin, $idSolicitante){
+        $this->intra_db->usarUTF8();
+        $this->intra_db->setCampos("id_vacacion_temp");
+        $this->intra_db->setTabla("TBINT_VACACIONES_TEMP");
+        $this->intra_db->setCondicionExpr("=","id_solicitante",$idSolicitante);
+        $this->intra_db->setCondicionExpr("=","fecha_inicio","'$fechaInicio'");
+        $this->intra_db->setCondicionExpr("=","fecha_fin", "'$fechaFin'");
+
+        $qryResult = $this->intra_db->Listar();
+        return $qryResult; 
+    }
+
+    public function _obtenerNumeroSolicitud($idSolicitante, $periodo) {
+        $this->intra_db->setCampos("COUNT(*) as num_solicitudes");
+        $this->intra_db->setTabla(array('DT' => 'TBINT_VACA_DETALLE_DISTRIBUCION_PERIODO'));
+        $this->intra_db->setJoin(array('DP' => 'TBINT_VACA_DISTRIBUCION_PERIODO'), 'DP.id_vaca_distribucion_periodo = DT.id_vaca_distribucion_periodo','INNER');
+        $this->intra_db->setJoin(array('V' => 'TBINT_VACACIONES'), 'V.id_vacacion = DT.id_vacacion','INNER');
+        $this->intra_db->setCondicion("=", "DP.periodo", $periodo);
+        $this->intra_db->setCondicion("IS NULL", "V.id_vaca_especial", NULL);
+        $this->intra_db->setCondicion("=", "DP.id_solicitante", $idSolicitante);
+        $result = $this->intra_db->Listar();
+        
+        return isset($result[0]->num_solicitudes) ? $result[0]->num_solicitudes + 1 : 1;
+    }
+
+    public function _obtenerPeriodo($idSolicitante) {
+        $this->intra_db->setCampos("TOP 1 periodo");
+        $this->intra_db->setTabla("TBINT_VACA_DISTRIBUCION_PERIODO");
+        $this->intra_db->setCondicion("=", "id_solicitante ", $idSolicitante);
+        $this->intra_db->setOrden("periodo ASC");
+        return $result = $this->intra_db->Listar();
+    }
+
+    /**
+     * Obtiene los días ya consumidos en un subperiodo específico
+     * @param int $idSolicitante ID del solicitante
+     * @param string $periodo Período (ej: 2024-2025)
+     * @param int $subperiodo Número de subperiodo (1 o 2)
+     * @return array Información de días consumidos
+     */
+    public function _obtenerDiasConsumidosPeriodo($idSolicitante, $periodo, $subperiodo) {
+        $field = ($subperiodo == 1) ? "subperiodo_uno" : "subperiodo_dos";
+        
+        $this->intra_db->setCampos("SUM($field) as dias_consumidos");
+        $this->intra_db->setTabla("TBINT_VACA_DISTRIBUCION_PERIODO");
+        $this->intra_db->setCondicion("=", "id_solicitante", $idSolicitante);
+        $this->intra_db->setCondicion("=", "periodo", $periodo);
+        $qryResult = $this->intra_db->Listar();
+
+        return $qryResult; 
     }
 
 }

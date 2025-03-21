@@ -5,6 +5,7 @@ var $ajaxArea;
 var tblConsolidado;
 var tbldetalleconsolidado;
 var generador = false;
+var tipocondicion = 0;
 
 /*var localeDate = {
     "separator": " - ",
@@ -776,12 +777,12 @@ function setFunctionFormulario(editar,fechaInicio,fechaFin){
             }
         },
         columns: [
-            { data: "PE_VACA", title : "Periodo"},
-            { data: "GANADAS", title : "GANADAS"},
+            { data: "PE_VACA", title : "PERIODO"},
+            { data: "GANADAS", title : "PENDIENTES"},
             { data: "GOZADAS", title : "GOZADAS"},
             { data: 'TRUNCAS', title: 'TRUNCAS'},
-            { data: "SALDO", title : "Por SALDO"},
-            { data:"ESTADO", title: "Estado"}
+            { data: "SALDO", title : "SALDO"},
+            { data:"ESTADO", title: "ESTADO"}
         ]
     });
 
@@ -966,12 +967,13 @@ function cambiarFechas(uso_vacaciones){
     if(status == 'false'){
         return false;
     }
-
+    data = { fechaInicio: start.format('YYYY-MM-DD'), fechaFin: end.format('YYYY-MM-DD'), idCondicion:$('#cboCondicion').val() , idSolicitante: $('#cboSolicitante').val() };
     loading(true,'Validando fechas');
-    $.post($getAppName+'/validarFechas/', { fechaInicio: start.format('YYYY-MM-DD'), fechaFin: end.format('YYYY-MM-DD') }, function(data) {
+    $.post($getAppName+'/validarFechas/', data, function(data) {
         loading(false);
         if (data.Result === 'OK') {
             validarTiempo(start,end);
+            $('idvacacionespecial').val(data.idFechaEspecial);
         } else {
             showConfirmWarning(data.Message);
         }
@@ -1037,9 +1039,11 @@ function validarTiempo(fechaInicio, fechaFin) {
         tipoVacacion = 'truncas';
     }
 
-    if(numDias > disponible) {
-        showConfirmWarning('Solo tienes disponible ' + disponible.toFixed(2) + ' días en el periodo de vacaciones ' + tipoVacacion + '. Por favor, ajusta la cantidad de días solicitados.');
-        return false;
+    if(condicion != '3'){
+        if(numDias > disponible) {
+            showConfirmWarning('Solo tienes disponible ' + disponible.toFixed(2) + ' días en el periodo de vacaciones ' + tipoVacacion + '. Por favor, ajusta la cantidad de días solicitados.');
+            return false;
+        }
     }
     
     return true;
