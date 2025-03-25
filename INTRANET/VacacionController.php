@@ -281,7 +281,7 @@ class VacacionController extends ControllerBase {
             $regFechaIngreso = $vacacionModelObj->getFechaIngresoColaborador($userInfo[0]->USUARIO);
             $info['fecha_ingreso'] = $regFechaIngreso[0]->FE_INGR_EMPR;
         }
-        $info['cboCondicion'] = $vacacionModelObj->listarCondicionComboEspecial($userInfo[0]->ID_USUARIO);
+        $info['cboCondicion'] = $vacacionModelObj->listarCondicionCombo();
 
         $this->view->showJSONPlane(array(
             'response'  => $info
@@ -426,25 +426,22 @@ class VacacionController extends ControllerBase {
         $this->sessionObj->checkJsonRequest();
         $fechaInicio = (isset($_POST['fechaInicio']) && $_POST['fechaInicio'] ? trim($_POST['fechaInicio']) : 0);
         $fechaFin = (isset($_POST['fechaFin']) && $_POST['fechaFin'] ? trim($_POST['fechaFin']) : 0);
-        $idCondicion = (isset($_POST['idCondicion']) && $_POST['idCondicion'] ? $_POST['idCondicion'] : 0);
-        $idSolicitante = (isset($_POST['idSolicitante']) && $_POST['idSolicitante'] ? $_POST['idSolicitante'] : 0);
         $isMaster = (isset($_POST['master']) && $_POST['master'] ? $_POST['master'] : 0);
-       
-        $response = $this->_validarFechas($fechaInicio,$fechaFin, $idCondicion, $idSolicitante, $isMaster);
+
+        $response = $this->_validarFechas($fechaInicio,$fechaFin,$isMaster);
 
         $this->view->showJSONPlane(array(
             'response'  => $response
         ));
     }
 
-    private function _validarFechas($fechaInicio,$fechaFin, $idCondicion, $idsolicitante, $isMaster=0){
+    private function _validarFechas($fechaInicio,$fechaFin,$isMaster=0){
         $response = array('Result' => 'ERROR', 'Message' => '', 'Records' => array());
         require_once $this->getDefaultModelName();
         require_once $this->getModelByName('VacacionConfiguracion', 'vacacionconfiguracion');
         require_once $this->getModelByName('DiasNoLaborable', 'diasnolaborable');
         $vacaConfigObj = new VacacionConfiguracionModel();
         $diasNoLaborableObj = new DiasNoLaborableModel();
-        $vacacionModelObj = new VacacionModel();
 
         $dateInicio = new DateTime($fechaInicio);
         $dateFin = new DateTime($fechaFin);
@@ -455,211 +452,50 @@ class VacacionController extends ControllerBase {
 
         $minimoDiasReg = $vacaConfigObj->getConfigById(1);
         $maximoDiasReg = $vacaConfigObj->getConfigById(3);
+        if($minimoDiasReg[0]->valor <= $numDias || $isMaster){
+            if($maximoDiasReg[0]->valor >= $numDias || $isMaster){
+                // El inicio y el fin de las vacaciones ahora puede ser un dia no laborable.
+                /*$diaReingreso = new DateTime($dateFin->format('Y-m-d'));
+                $diaReingreso->add(new DateInterval('P1D'));
+                $validFechaInicio = $diasNoLaborableObj->getInfobyFecha($dateInicio->format('Y-m-d'));
 
-        
-        if($idCondicion != 3){
-            $periodoActual = $vacacionModelObj->_obtenerPeriodo($idsolicitante);
+                $fechaInicioLaborable = true;
+                $indiceFechaInicio = $dateInicio->format('N');
+                foreach ($regDiasNoLaborable as $row) {
+                    if($row->indice == $indiceFechaInicio ){
+                        $fechaInicioLaborable = false;
+                        break;
+                    }
+                }
 
-            $numSolicitud = $vacacionModelObj->_obtenerNumeroSolicitud($idsolicitante, $periodoActual[0]->periodo);
+                if((empty($validFechaInicio) && $fechaInicioLaborable) || $isMaster){
+                    $validFechaFin = $diasNoLaborableObj->getInfobyFecha($diaReingreso->format('Y-m-d'));
 
-            var_dump($periodoActual);
-            var_dump($numSolicitud);
-            die();
+                    $fechaReIngresoLaborable = true;
+                    $indiceFechaReIngreso = $diaReingreso->format('N');
+                    foreach ($regDiasNoLaborable as $row) {
+                        if($row->indice == $indiceFechaReIngreso ){
+                            $fechaReIngresoLaborable = false;
+                            break;
+                        }
+                    }
 
-            // Validar según el número de solicitud
-        if ($numSolicitud == 1) {
-            $validacion = $this->_validarPrimeraSolicitud($numDias);
-            $response=$validacion;
-        } 
-        else if ($numSolicitud == 2) {
-            // Obtener días de la primera solicitud
-            $diasPrimeraSolicitud = $vacacionModelObj->_obtenerDiasConsumidosPeriodo($idsolicitante, $periodoActual[0]->periodo, 1);
-            
-            $validacion = $this->_validarSegundaSolicitud($numDias, $diasPrimeraSolicitud[0]->dias_consumidos);
-            $response=$validacion;
-        } 
-        else if ($numSolicitud >= 3) {
-            var_dump('paso 3');
-            die();
-            // Obtener días del subperiodo 1 y 2
-            $diasSubperiodo1 = $vacacionModelObj->_obtenerDiasConsumidosPeriodo($idsolicitante, $periodoActual[0]->periodo, 1);
-            $diasSubperiodo2 = $vacacionModelObj->_obtenerDiasConsumidosPeriodo($idsolicitante, $periodoActual[0]->periodo, 2);
-            $diasNoHabil = $vacacionModelObj->_obtenerDiasConsumidosPeriodoNoHabil($idsolicitante, $periodoActual[0]->periodo);
-            
-            $validacion = $this->_validarTerceraSolicitud(
-                $diasSubperiodo1, 
-                $diasSubperiodo2, 
-                $diasNoHabil[0]->dias_consumidos_no_habil,
-                $fechaInicio,
-                $fechaFin
-            );
-            $response=$validacion;
-            
-            // if (!$validacion['status']) {
-            //     $resultado['mensaje'] = $validacion['mensaje'];
-            //     return $resultado;
-            // }
-        }
-            
-            // if($minimoDiasReg[0]->valor <= $numDias || $isMaster){
-            //     if($maximoDiasReg[0]->valor >= $numDias || $isMaster){
-
-            //                 $response['Result'] = 'OK';
-
-            //     }else{
-            //         $response['Message'] = 'La cantidad máxima de vacaciones es '.$maximoDiasReg[0]->valor;
-            //     }
-            // }else{
-            //     $response['Message'] = 'La cantidad mínima de vacaciones es '.$minimoDiasReg[0]->valor;
-            // }
-        } else {
-            $validacionFechaEspecial = $this->validarFechasEspeciales($fechaInicio,$fechaFin, $idsolicitante);
-            $response = $validacionFechaEspecial;
-            
-        }
-        return $response;
-    }
-
-    public function validarFechasEspeciales($fechaInicio,$fechaFin, $idsolicitante){
-        $this->sessionObj->checkJsonRequest();
-
-        require_once $this->getDefaultModelName();
-        $vacacionModelObj = new VacacionModel();
-
-        $idFechaEspecial = $vacacionModelObj->getFechaEspecial($fechaInicio,$fechaFin, $idsolicitante);
-        
-        if(count($idFechaEspecial) > 0 ){
-            $response['idFechaEspecial'] = $idFechaEspecial[0]->id_vacacion_temp;
-            $response['Result'] = 'OK';
+                    if((empty($validFechaFin) && $fechaReIngresoLaborable) || $isMaster){*/
+                        $response['Result'] = 'OK';
+                    /*}else{
+                        $response['Message'] = 'La fecha de reingreso debe ser un día laborable';
+                    }
+                }else{
+                    $response['Message'] = 'El inicio de vacaciones debe ser un día laborable';
+                }*/
+            }else{
+                $response['Message'] = 'La cantidad máxima de vacaciones es '.$maximoDiasReg[0]->valor;
+            }
         }else{
-            $response['Result'] = 'ERROR';
-            $response['Message'] = 'No dispone de una fecha especial asignada.';
+            $response['Message'] = 'La cantidad mínima de vacaciones es '.$minimoDiasReg[0]->valor;
         }
-        
+
         return $response;
-    }
-
-    /**
-     * Valida las reglas para la primera solicitud de vacaciones
-     * @param int $diasSolicitados Cantidad de días solicitados
-     * @return array Resultado de la validación
-     */
-    private function _validarPrimeraSolicitud($diasSolicitados) {
-        $resultado = array('Result' => "ERROR", 'Message' => '');
-        
-        // Validar mínimo 7 días y máximo 30
-        if ($diasSolicitados < 7) {
-            $resultado['Message'] = 'La primera solicitud debe ser de mínimo 7 días.';
-            return $resultado;
-        }
-        
-        if ($diasSolicitados > 30) {
-            $resultado['Message'] = 'La primera solicitud debe ser de máximo 30 días.';
-            return $resultado;
-        }
-        
-        $resultado['Result'] = 'OK';
-        return $resultado;
-    }
-
-    /**
-     * Valida las reglas para la segunda solicitud de vacaciones
-     * @param int $diasSolicitados Cantidad de días solicitados
-     * @param int $diasPrimeraSolicitud Días de la primera solicitud
-     * @return array Resultado de la validación
-     */
-    private function _validarSegundaSolicitud($diasSolicitados, $diasPrimeraSolicitud) {
-        $resultado = array('Result' => "ERROR", 'Message' => '');
-        
-        // Determinar el mínimo de días según primera solicitud
-        $minimoRequerido = ($diasPrimeraSolicitud == 7) ? 8 : 7;
-        
-        if ($diasSolicitados < $minimoRequerido) {
-            $resultado['Message'] = "La segunda solicitud debe ser de mínimo $minimoRequerido días.";
-            return $resultado;
-        }
-        
-        $resultado['Result'] = 'OK';
-        return $resultado;
-    }
-
-    /**
-     * Valida las reglas para la tercera solicitud de vacaciones
-     * @param int $diasSolicitados Cantidad de días solicitados
-     * @param int $diasSubperiodo1 Días consumidos en subperiodo 1
-     * @param int $diasNoHabilConsumo Días no hábiles ya consumidos en subperiodo 2
-     * @return array Resultado de la validación
-     */
-    private function _validarTerceraSolicitud($diasSubperiodo1, $diasSubperiodo2, $diasNoHabilConsumo, $fechaInicio, $fechaFin) {
-        require_once $this->getDefaultModelName();
-        require_once $this->getModelByName('VacacionConfiguracion', 'vacacionconfiguracion');
-    
-        $vacaConfigObj = new VacacionConfiguracionModel();
-        $vacacionModelObj = new VacacionModel();
-        var_dump('entreeeeee');
-        die();
-    
-        $resultado = array('Result' => "ERROR", 'Message' => '');
-        
-        // Validar que se haya consumido todo el subperiodo 1
-        if ($diasSubperiodo1 < 15) {
-            $resultado['Message'] = "Debe consumir los 15 días del primer subperiodo antes de registrar esta solicitud.";
-            return $resultado;
-        }
-    
-        // Contar días hábiles y no hábiles en la solicitud actual (rango de fechas)
-        $diasTipoActual = $vacacionModelObj->_sumarDiasPorTipo($fechaInicio, $fechaFin);
-        $totalDiasSolicitados = $diasTipoActual['habil'] + $diasTipoActual['no_habil'];
-        
-        // Obtener configuración para días flexibles
-        $diasFlexiblesConfig = $vacaConfigObj->getConfigById(6); 
-        $diasFlexibles = intval($diasFlexiblesConfig); // Por defecto 5 días flexibles
-           
-        if ($diasSubperiodo2 < $diasFlexibles) {
-            // Está dentro de los días flexibles, verificar que no sobrepase el límite
-            if (($diasSubperiodo2 + $diasTipoActual['habil']) <= $diasFlexibles) {
-                $resultado['Result'] = 'OK';
-                return $resultado;
-            } else {
-                // Sobrepasa los días flexibles, debe incluir fin de semana obligatorio
-                // Verificar si la solicitud incluye sábado y domingo
-                $incluyeFinDeSemana = $this->_verificarInclucionFinDeSemana($fechaInicio, $fechaFin);
-                
-                if (!$incluyeFinDeSemana) {
-                    $resultado['Message'] = "Al sobrepasar los {$diasFlexibles} días flexibles, debe incluir obligatoriamente un sábado y domingo en su solicitud.";
-                    return $resultado;
-                }
-                $resultado['Result'] = 'OK';
-                return $resultado;
-            }
-        } else {
-            // Ya ha consumido los días flexibles, validar los días de fin de semana
-            $diasFinDeSemanaRequeridos = 2; // Por defecto se requieren 2 días (sábado y domingo)
-            
-            // Si ya ha consumido 7 días no hábiles, solo se requiere 1 día adicional
-            if ($diasNoHabilConsumo >= 7) {
-                $diasFinDeSemanaRequeridos = 1;
-            } else if ($diasNoHabilConsumo >= 8) {
-                // Si ya consumió 8 o más días no hábiles, no es obligatorio incluir fin de semana
-                $resultado['Result'] = 'OK';
-                return $resultado;
-            }
-            
-            // Verificar si la solicitud incluye los días de fin de semana requeridos
-            $diasFinDeSemanaIncluidos = $this->_verificarInclucionFinDeSemana($fechaInicio, $fechaFin);
-            
-            if ($diasFinDeSemanaIncluidos < $diasFinDeSemanaRequeridos) {
-                if ($diasFinDeSemanaRequeridos == 1) {
-                    $resultado['Message'] = "Debe incluir al menos 1 día de fin de semana (sábado o domingo) en su solicitud.";
-                } else {
-                    $resultado['Message'] = "Debe incluir obligatoriamente sábado y domingo en su solicitud.";
-                }
-                return $resultado;
-            }
-            
-            $resultado['Result'] = 'OK';
-            return $resultado;
-        }
     }
 
     public function crear(){
@@ -688,27 +524,12 @@ class VacacionController extends ControllerBase {
             $input = new CI_Input();
 
             $statusCantidadDias = $this->_validarCantidadDias($input->post(NULL));
-
-            // Validar que no se seleccione vacaciones truncas si tiene vacaciones vencidas o ganadas
-            // y que no se mezclen periodos en una misma solicitud
-            $postData = $input->post(NULL);
-            $validarCondicionTruncas = $this->_validarCondicionTruncas($postData['cboSolicitante'], $postData['cboCondicion'], $postData);
-            if(!$validarCondicionTruncas['status']){
-                $response["Message"] = $validarCondicionTruncas['mensaje'];
-                $this->view->showJSONPlane(array('response' => $response));
-                return;
-            }
-
             if($statusCantidadDias['status']){
-
-                $statusRangoFecha = $this->_validarFechas($input->post('txtFechaInicio'),$input->post('txtFechaFin'), $input->post('cboCondicion'), $input->post('cboSolicitante'),$input->post('master'));
+                $statusRangoFecha = $this->_validarFechas($input->post('txtFechaInicio'),$input->post('txtFechaFin'),$input->post('master'));
                 if($statusRangoFecha['Result'] === 'OK'){
-                    var_dump('validar antes');
-                    die();
-                    $idVacacionEspecial = isset($statusRangoFecha['idFechaEspecial']) ? $statusRangoFecha['idFechaEspecial'] : null;
                     $vacaCruzadas = $vacacionModelObj->getVacacionesFromDate($input->post('cboSolicitante'),$input->post('txtFechaInicio'),$input->post('txtFechaFin'));
                     if(empty($vacaCruzadas)){
-                        $estadoRegistro = $vacacionModelObj->createVacacion($input->post(NULL), $idVacacionEspecial);
+                        $estadoRegistro = $vacacionModelObj->createVacacion($input->post(NULL));
                         if($estadoRegistro['status']){
                             $this->sessionObj->RegisterAccion($this->getAppName().$funcion, __FUNCTION__, $estadoRegistro['id']);
                             $response['Result'] = 'OK';
@@ -743,22 +564,19 @@ class VacacionController extends ControllerBase {
         $idSolicitud = isset($reg['idSolicitud'])? $reg['idSolicitud'] : 0;
 
         $userInfo = $this->sessionObj->getUserInfo($reg['cboSolicitante']);
-        
         $vacacion = $reporteModelObj->getReporteVacaciones(date('d/m/Y'),'01','','','','','',"'".$userInfo[0]->USUARIO."'");
-        
+
         $regProgramados = $vacacionModelObj->getNumProgramadas($reg['cboSolicitante'],1,$idSolicitud);
-        
         $regProgramadosAcuenta = $vacacionModelObj->getNumProgramadas($reg['cboSolicitante'],2,$idSolicitud);
 
         $usoVaca = $this->_formatVacionesOfisis($vacacion,$regProgramados,1);
-
         //$aCuentaVaca = $this->_formatVacionesOfisis($vacacion,$regProgramadosAcuenta,2);
 
         $response = array('status' => false, 'mensaje' => '');
 
         //Validar que acabe sus vacaciones ganadas
         if($reg['cboCondicion'] == 2 && $usoVaca['por_programar'] > 0){
-            $response['mensaje'] = 'No puede seleccionar adelanto a cuenta de vacaciones truncas, si dispone de vacaciones vencidas o pendientes.';
+            $response['mensaje'] = 'Primero debe consumir sus vacaciones ganadas, antes de usar las vacaciones truncas';
             return $response;
         }
 
@@ -777,60 +595,6 @@ class VacacionController extends ControllerBase {
 
         return $response;
     }
-
-
-    /**
-     * Validar condición de vacaciones truncas y que no se mezclen periodos
-     */
-    private function _validarCondicionTruncas($idSolicitante, $condicion, $postData)
-    {
-        $result = array('status' => true, 'mensaje' => '');
-        
-        // Obtener el consolidado de vacaciones del JSON
-        $consolidado = json_decode($postData['tblConsolidado'], true);
-        $diasVencidos = isset($consolidado['vencido']) ? floatval($consolidado['vencido']) : 0;
-        $diasGanados = isset($consolidado['ganado']) ? floatval($consolidado['ganado']) : 0;
-        $diasTruncos = isset($consolidado['trunco']) ? floatval($consolidado['trunco']) : 0;
-        $programado = isset($consolidado['programado']) ? floatval($consolidado['programado']) : 0;
-        
-        // Validar que no se seleccione vacaciones truncas (condición 2) si hay vencidas o ganadas
-        if($condicion == '2'){
-            if($diasVencidos > 0 || $diasGanados > 0){
-                $result['status'] = false;
-                $result['mensaje'] = 'No puede seleccionar adelanto a cuenta de vacaciones truncas, si dispone de vacaciones vencidas o pendientes.';
-                return $result;
-            }
-        }
-        
-        // Validar que la cantidad de días solicitada no exceda el periodo seleccionado
-        $cantidadDias = intval($postData['txtCantidadDias']);
-        $disponiblesPeriodo = 0;
-        
-        if($condicion == '1') {
-            // Para condición 1, usar primero vencidas, luego ganadas
-            if($diasVencidos > 0) {
-                $disponiblesPeriodo = $diasVencidos - $programado;
-                $tipoVacacion = 'vencidas';
-            } else {
-                $disponiblesPeriodo = $diasGanados - $programado;
-                $tipoVacacion = 'pendientes';
-            }
-        } else if($condicion == '2') {
-            // Para condición 2, solo truncas
-            $disponiblesPeriodo = $diasTruncos - $programado;
-            $tipoVacacion = 'truncas';
-        }else {
-            return $result;
-        }
-        
-        if($cantidadDias > $disponiblesPeriodo){
-            $result['status'] = false;
-            $result['mensaje'] = "Solo tienes disponible " . number_format($disponiblesPeriodo, 2) . " días en el periodo de vacaciones $tipoVacacion . Por favor, ajusta la cantidad de días solicitados.";
-        }
-        
-        return $result;
-    }
-
 
     public function buscarUsuario(){
         $this->sessionObj->checkJsonRequest();
@@ -1198,7 +962,7 @@ class VacacionController extends ControllerBase {
 
             $statusCantidadDias = $this->_validarCantidadDias($input->post(NULL));
             if($statusCantidadDias['status']){
-                $statusRangoFecha = $this->_validarFechas($input->post('txtFechaInicio'),$input->post('txtFechaFin'), $input->post('cboCondicion'), $input->post('cboSolicitante'),$input->post('master'));
+                $statusRangoFecha = $this->_validarFechas($input->post('txtFechaInicio'),$input->post('txtFechaFin'),$input->post('master'));
                 if($statusRangoFecha['Result'] === 'OK'){
                     $vacaCruzadas = $vacacionModelObj->getVacacionesFromDate($input->post('cboSolicitante'),$input->post('txtFechaInicio'),$input->post('txtFechaFin'),$input->post('idSolicitud'));
                     if(empty($vacaCruzadas)){
@@ -2066,46 +1830,4 @@ class VacacionController extends ControllerBase {
         $vacacionModelObj = new VacacionModel();
         $vacacionModelObj->procesarSincronizacion();
     }
-
-    /**
- * Verifica si entre las fechas de inicio y fin se incluye al menos un fin de semana completo (sábado y domingo)
- * 
- * @param string $fechaInicio Fecha de inicio en formato Y-m-d
- * @param string $fechaFin Fecha de fin en formato Y-m-d
- * @return boolean True si incluye al menos un sábado y un domingo, False en caso contrario
- */
-private function _verificarInclucionFinDeSemana($fechaInicio, $fechaFin) {
-    $tieneSabado = false;
-    $tieneDomingo = false;
-    
-    // Convertir las fechas a objetos DateTime
-    $inicio = new DateTime($fechaInicio);
-    $fin = new DateTime($fechaFin);
-    $fin->modify('+1 day'); // Incluir el día final en el conteo
-    
-    // Intervalo de 1 día para iterar
-    $intervalo = new DateInterval('P1D');
-    $periodo = new DatePeriod($inicio, $intervalo, $fin);
-    
-    // Recorrer cada día en el periodo
-    foreach ($periodo as $fecha) {
-        $diaSemana = $fecha->format('w');
-        
-        if ($diaSemana == 6) { // Sábado
-            $tieneSabado = true;
-        } elseif ($diaSemana == 0) { // Domingo
-            $tieneDomingo = true;
-        }
-        
-        // Si ya encontramos ambos días, no necesitamos seguir verificando
-        if ($tieneSabado && $tieneDomingo) {
-            return true;
-        }
-    }
-    
-    // Verificar si encontramos tanto sábado como domingo
-    return ($tieneSabado && $tieneDomingo);
-}
-
-    
 }
