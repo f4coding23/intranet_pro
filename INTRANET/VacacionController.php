@@ -1,14 +1,17 @@
 <?php
-class VacacionController extends ControllerBase {
-    function __construct(){
+class VacacionController extends ControllerBase
+{
+    function __construct()
+    {
         parent::__construct(__CLASS__);
     }
 
-    public function index(){
+    public function index()
+    {
         //Verificamos la sesión
         $this->sessionObj->checkInner();
         require $this->getDefaultModelName();
-        require $this->getModelByName('Directorio','directorio');
+        require $this->getModelByName('Directorio', 'directorio');
         require $this->getModelByName('BoletaGeneradores', 'boletageneradores');
         require_once $this->getModelByName('VacacionConfiguracion', 'vacacionconfiguracion');
 
@@ -34,7 +37,7 @@ class VacacionController extends ControllerBase {
         $data['rootFolder'] = $this->getRootFolder();
         $data['protocol'] = $this->getCurrentProtocol();
         $data['obj'] = $this;
-        
+
         $this->sessionObj->RegisterAuditModule($this->getAppName());
 
         //Finalmente presentamos nuestra plantilla
@@ -44,7 +47,8 @@ class VacacionController extends ControllerBase {
         ));
     }
 
-    public function listar($master = false){
+    public function listar($master = false)
+    {
         $this->sessionObj->checkJsonRequest();
         $pgStart = (isset($_REQUEST['jtStartIndex']) && $_REQUEST['jtStartIndex'] ? $_REQUEST['jtStartIndex'] : 0);
         $pgSize = (isset($_REQUEST['jtPageSize']) && $_REQUEST['jtPageSize'] ? $_REQUEST['jtPageSize'] : 0);
@@ -74,12 +78,12 @@ class VacacionController extends ControllerBase {
             $dnis = $reporteModelObj->getDnisJerarquia2($userInfo[0]->DNI);
         }
 
-        $vacacionesList = $vacacionModelObj->getVacacionesList($pgStart,$pgSize,$pgSort,$qryEmpresa,$qryGerencia,$qryDepartamento,$qryArea,$qrySeccion,$qryIniRango,$qryFinRango, $dnis, $qryColaborador);
-        $numBoleta = $vacacionModelObj->getNumVacaciones($qryEmpresa,$qryGerencia,$qryDepartamento,$qryArea,$qrySeccion,$qryIniRango,$qryFinRango,$dnis,$qryColaborador);
+        $vacacionesList = $vacacionModelObj->getVacacionesList($pgStart, $pgSize, $pgSort, $qryEmpresa, $qryGerencia, $qryDepartamento, $qryArea, $qrySeccion, $qryIniRango, $qryFinRango, $dnis, $qryColaborador);
+        $numBoleta = $vacacionModelObj->getNumVacaciones($qryEmpresa, $qryGerencia, $qryDepartamento, $qryArea, $qrySeccion, $qryIniRango, $qryFinRango, $dnis, $qryColaborador);
         $numBoletaVal = $numBoleta[0]->num;
 
         if ($vacacionesList) {
-            $this->_marcarDuenio($vacacionesList, (isset($userInfo[0]->ID_USUARIO))?$userInfo[0]->ID_USUARIO:'');
+            $this->_marcarDuenio($vacacionesList, (isset($userInfo[0]->ID_USUARIO)) ? $userInfo[0]->ID_USUARIO : '');
             $response["Result"] = 'OK';
             $response["Records"] = $vacacionesList;
             $response["TotalRecordCount"] = $numBoletaVal;
@@ -93,14 +97,16 @@ class VacacionController extends ControllerBase {
         ));
     }
 
-    private function _marcarDuenio(&$reg, $own){
+    private function _marcarDuenio(&$reg, $own)
+    {
         foreach ($reg as $key => $row) {
             $row->own = ($own == $row->id_solicitante || $own == $row->id_generador) ? true : false;
-            $row->propio = ($own == $row->id_solicitante)? true : false;
+            $row->propio = ($own == $row->id_solicitante) ? true : false;
         }
     }
 
-    public function listarAutorizaciones(){
+    public function listarAutorizaciones()
+    {
         $this->sessionObj->checkJsonRequest();
         $qryIdVacacion = (isset($_REQUEST['id_vacacion']) && $_REQUEST['id_vacacion'] ? trim($_REQUEST['id_vacacion']) : 0);
 
@@ -121,10 +127,11 @@ class VacacionController extends ControllerBase {
         ));
     }
 
-    public function indexVacacionesMaster(){
+    public function indexVacacionesMaster()
+    {
         $this->sessionObj->checkInner();
         require $this->getDefaultModelName();
-        require $this->getModelByName('Directorio','directorio');
+        require $this->getModelByName('Directorio', 'directorio');
         require_once $this->getModelByName('VacacionConfiguracion', 'vacacionconfiguracion');
 
         $vacacionModelObj  = new VacacionModel();
@@ -149,11 +156,13 @@ class VacacionController extends ControllerBase {
         ));
     }
 
-    public function listarMaster(){
+    public function listarMaster()
+    {
         $this->listar(true);
     }
 
-    public function indexVacacionesMasterCP(){
+    public function indexVacacionesMasterCP()
+    {
         //Verificamos la sesión
         $this->sessionObj->checkInner();
 
@@ -173,14 +182,15 @@ class VacacionController extends ControllerBase {
         $data['cboEmpresa'] = $directorioModelObj->getEmpresaGroup(array('01'));
         $data['gerencias_ope'] = $asignacionModelObj->getVacacionAsignacionByUser($userInfo[0]->ID_USUARIO);
 
-        $this->sessionObj->RegisterAuditModule($this->getAppName().'/'.__FUNCTION__);
+        $this->sessionObj->RegisterAuditModule($this->getAppName() . '/' . __FUNCTION__);
         $this->view->show(array(
             'filename'    => "vacacionesMasterCP.tpl.php",
             'data'        => $data
         ));
     }
 
-    public function listarMasterCP(){
+    public function listarMasterCP()
+    {
         $this->sessionObj->checkJsonRequest();
         $pgStart = (isset($_REQUEST['jtStartIndex']) && $_REQUEST['jtStartIndex'] ? $_REQUEST['jtStartIndex'] : 0);
         $pgSize = (isset($_REQUEST['jtPageSize']) && $_REQUEST['jtPageSize'] ? $_REQUEST['jtPageSize'] : 0);
@@ -221,8 +231,8 @@ class VacacionController extends ControllerBase {
                 }
             }
 
-            $vacacionesList = $vacacionModelObj->getVacacionesList($pgStart,$pgSize,$pgSort,$qryEmpresa,$qryGerencia,$qryDepartamento,$qryArea,$qrySeccion,$qryIniRango,$qryFinRango, $dnis, $qryColaborador);
-            $numBoleta = $vacacionModelObj->getNumVacaciones($qryEmpresa,$qryGerencia,$qryDepartamento,$qryArea,$qrySeccion,$qryIniRango,$qryFinRango,$dnis,$qryColaborador);
+            $vacacionesList = $vacacionModelObj->getVacacionesList($pgStart, $pgSize, $pgSort, $qryEmpresa, $qryGerencia, $qryDepartamento, $qryArea, $qrySeccion, $qryIniRango, $qryFinRango, $dnis, $qryColaborador);
+            $numBoleta = $vacacionModelObj->getNumVacaciones($qryEmpresa, $qryGerencia, $qryDepartamento, $qryArea, $qrySeccion, $qryIniRango, $qryFinRango, $dnis, $qryColaborador);
             $numBoletaVal = $numBoleta[0]->num;
         } else {
             $boletaList = array();
@@ -231,7 +241,7 @@ class VacacionController extends ControllerBase {
 
 
         if ($vacacionesList) {
-            $this->_marcarDuenio($vacacionesList, (isset($userInfo[0]->ID_USUARIO))?$userInfo[0]->ID_USUARIO:'');
+            $this->_marcarDuenio($vacacionesList, (isset($userInfo[0]->ID_USUARIO)) ? $userInfo[0]->ID_USUARIO : '');
             $response["Result"] = 'OK';
             $response["Records"] = $vacacionesList;
             $response["TotalRecordCount"] = $numBoletaVal;
@@ -247,7 +257,8 @@ class VacacionController extends ControllerBase {
 
     /************************************************* FUNCIONALIDADES PARA LA CREACION *********************************************/
 
-    public function indexCrear(){
+    public function indexCrear()
+    {
         $this->sessionObj->checkJsonRequest();
         $info = array();
 
@@ -259,12 +270,12 @@ class VacacionController extends ControllerBase {
         $vacacionModelObj  = new VacacionModel();
         $boletaGeneObj = new BoletaGeneradoresModel();
         $userInfo = $this->sessionObj->getUserInfo();
-        $gerencias_gene = $boletaGeneObj->getGenerador("", "", $userInfo[0]->ID_USUARIO,3);
+        $gerencias_gene = $boletaGeneObj->getGenerador("", "", $userInfo[0]->ID_USUARIO, 3);
 
         $info['Result'] = 'OK';
         $info['generador'] = empty($gerencias_gene) ? false : true;
 
-        if(!$info['generador']){
+        if (!$info['generador']) {
             $userInfoOfisis = $this->sessionObj->getInfoFromOfisis();
             $regFechaIngreso = $vacacionModelObj->getFechaIngresoColaborador($userInfo[0]->USUARIO);
 
@@ -276,19 +287,20 @@ class VacacionController extends ControllerBase {
         }
 
         //Si envian el solicitante, devolver la fecha de ingreso del colaborador
-        if($qrySolicitante){
+        if ($qrySolicitante) {
             $userInfo = $this->sessionObj->getUserInfo($qrySolicitante);
             $regFechaIngreso = $vacacionModelObj->getFechaIngresoColaborador($userInfo[0]->USUARIO);
             $info['fecha_ingreso'] = $regFechaIngreso[0]->FE_INGR_EMPR;
         }
-        $info['cboCondicion'] = $vacacionModelObj->listarCondicionCombo();
+        $info['cboCondicion'] = $vacacionModelObj->listarCondicionComboEspecial($userInfo[0]->ID_USUARIO);
 
         $this->view->showJSONPlane(array(
             'response'  => $info
         ));
     }
 
-    public function listarConsolidado(){
+    public function listarConsolidado()
+    {
         $this->sessionObj->checkJsonRequest();
         $idSolicitante = (isset($_REQUEST['idSolicitante']) && $_REQUEST['idSolicitante'] ? trim($_REQUEST['idSolicitante']) : 0);
         $idCondicion = (isset($_REQUEST['idCondicion']) && $_REQUEST['idCondicion'] ? trim($_REQUEST['idCondicion']) : 0);
@@ -301,10 +313,10 @@ class VacacionController extends ControllerBase {
 
         $response = array();
         $userInfo = $this->sessionObj->getUserInfo($idSolicitante);
-        $vacacion = $reporteModelObj->getReporteVacaciones(date('d/m/Y'),'01','','','','','',"'".$userInfo[0]->USUARIO."'");
-        $regProgramados = $vacacionModelObj->getNumProgramadas($idSolicitante,$idCondicion,$idSolicitud);
+        $vacacion = $reporteModelObj->getReporteVacaciones(date('d/m/Y'), '01', '', '', '', '', '', "'" . $userInfo[0]->USUARIO . "'");
+        $regProgramados = $vacacionModelObj->getNumProgramadas($idSolicitante, $idCondicion, $idSolicitud);
         //$regDisponibles = $vacacionModelObj->getVacacionesPendientes($idSolicitante,0,$idCondicion,$idSolicitud);
-        $registro = $this->_formatVacionesOfisis($vacacion,$regProgramados,$idCondicion);
+        $registro = $this->_formatVacionesOfisis($vacacion, $regProgramados, $idCondicion);
 
         $response['recordsTotal'] = 1;
         $response['recordsFiltered'] = 1;
@@ -314,7 +326,8 @@ class VacacionController extends ControllerBase {
             'response'  => $response
         ));
     }
-    public function listarConsolidadoDetalle(){
+    public function listarConsolidadoDetalle()
+    {
         $this->sessionObj->checkJsonRequest();
         $idSolicitante = (isset($_REQUEST['idSolicitante']) && $_REQUEST['idSolicitante'] ? trim($_REQUEST['idSolicitante']) : 0);
         $idCondicion = (isset($_REQUEST['idCondicion']) && $_REQUEST['idCondicion'] ? trim($_REQUEST['idCondicion']) : 0);
@@ -328,10 +341,10 @@ class VacacionController extends ControllerBase {
         $reporteModelObj = new ReporteModel();
         //getDetallePeriodos
         $userInfo = $this->sessionObj->getUserInfo($idSolicitante);
-        $vacacion = $reporteModelObj->getReporteVacaciones(date('d/m/Y'),'01','','','','','',"'".$userInfo[0]->USUARIO."'");
-        $regProgramados = $vacacionModelObj->getNumProgramadas($idSolicitante,$idCondicion,$idSolicitud);
-        $registro = $this->_formatVacionesOfisis($vacacion,$regProgramados,$idCondicion);
-        $result = $reporteModelObj->getDetallePeriodos($userInfo[0]->USUARIO,$empresa,date('d/m/Y'),$registro["trunco"]);
+        $vacacion = $reporteModelObj->getReporteVacaciones(date('d/m/Y'), '01', '', '', '', '', '', "'" . $userInfo[0]->USUARIO . "'");
+        $regProgramados = $vacacionModelObj->getNumProgramadas($idSolicitante, $idCondicion, $idSolicitud);
+        $registro = $this->_formatVacionesOfisis($vacacion, $regProgramados, $idCondicion);
+        $result = $reporteModelObj->getDetallePeriodos($userInfo[0]->USUARIO, $empresa, date('d/m/Y'), $registro["trunco"]);
         // echo "<pre>";
         // print_r($registro);
         // print_r($result);
@@ -349,7 +362,7 @@ class VacacionController extends ControllerBase {
                 "ganado" => ["estado" => "pendiente", "periodo" => "$a_anterior-$a_trasante"],
                 "vencido" => ["estado" => "vencidas", "periodo" => "$a_trasante-$a_tras_ante"]
             ];
-        
+
             foreach ($estados as $key => $data) {
                 if ($registro[$key] > 0) {
                     $result[] = (object)[
@@ -369,7 +382,7 @@ class VacacionController extends ControllerBase {
             }
         }
         //eliminamos los estados cerrados y total para que no aparezcan en la tabla
-        $filtrado = array_values(array_filter($result, function($item) {
+        $filtrado = array_values(array_filter($result, function ($item) {
             return $item->ESTADO !== "Cerrado" && $item->ESTADO != "";
         }));
         $response['recordsTotal'] = 1;
@@ -379,27 +392,28 @@ class VacacionController extends ControllerBase {
         $this->view->showJSONPlane(array(
             'response'  => $response
         ));
-
     }
-    private function _formatVacionesOfisis($vacacion,$regProgramados,$idCondicion,$disponibleTipo=false){
-        $periodos = array_reverse($vacacion);//Revertir, para empezar con los truncos, ganados y finalmente los vencidos
-        
+    private function _formatVacionesOfisis($vacacion, $regProgramados, $idCondicion, $disponibleTipo = false)
+    {
+        $periodos = array_reverse($vacacion); //Revertir, para empezar con los truncos, ganados y finalmente los vencidos
+        // var_dump($periodos);
+        // die();
         $index = 1;
-        $registro = array('trunco' => 0,'ganado' => 0,'vencido' => 0);
+        $registro = array('trunco' => 0, 'ganado' => 0, 'vencido' => 0);
         foreach ($periodos as $periodo) {
 
             switch ($index) {
                 case 1:
-                $registro['trunco'] = floatval($periodo->DIAS_PEND? $periodo->DIAS_PEND : 0.00);
-                $index++;
-                break;
+                    $registro['trunco'] = floatval($periodo->DIAS_PEND ? $periodo->DIAS_PEND : 0.00);
+                    $index++;
+                    break;
                 case 2:
-                $registro['ganado'] = floatval($periodo->DIAS_PEND? $periodo->DIAS_PEND : 0.00);
-                $index++;
-                break;
+                    $registro['ganado'] = floatval($periodo->DIAS_PEND ? $periodo->DIAS_PEND : 0.00);
+                    $index++;
+                    break;
                 case 3:
-                $registro['vencido'] = $registro['vencido']+ floatval($periodo->DIAS_PEND);
-                break;
+                    $registro['vencido'] = $registro['vencido'] + floatval($periodo->DIAS_PEND);
+                    break;
             }
         }
 
@@ -409,101 +423,301 @@ class VacacionController extends ControllerBase {
         }
 
 
-        if($idCondicion == 1){
-            if(empty($disponibleTipo)){
+        if ($idCondicion == 1 || $idCondicion == 3) {
+            if (empty($disponibleTipo)) {
                 $registro['por_programar'] = ($registro['ganado'] + $registro['vencido']) - $registro['programado'];
-            }else{
+            } else {
                 $registro['por_programar'] = $disponibleTipo;
             }
-        }else{
+        } else {
             $registro['por_programar'] = $registro['trunco'] - $registro['programado'];
         }
 
         return $registro;
     }
 
-    public function validarFechas(){
+    public function validarFechas()
+    {
         $this->sessionObj->checkJsonRequest();
         $fechaInicio = (isset($_POST['fechaInicio']) && $_POST['fechaInicio'] ? trim($_POST['fechaInicio']) : 0);
         $fechaFin = (isset($_POST['fechaFin']) && $_POST['fechaFin'] ? trim($_POST['fechaFin']) : 0);
+        $idCondicion = (isset($_POST['idCondicion']) && $_POST['idCondicion'] ? $_POST['idCondicion'] : 0);
+        $idSolicitante = (isset($_POST['idSolicitante']) && $_POST['idSolicitante'] ? $_POST['idSolicitante'] : 0);
         $isMaster = (isset($_POST['master']) && $_POST['master'] ? $_POST['master'] : 0);
 
-        $response = $this->_validarFechas($fechaInicio,$fechaFin,$isMaster);
+        $response = $this->_validarFechas($fechaInicio, $fechaFin, $idCondicion, $idSolicitante, $isMaster);
 
         $this->view->showJSONPlane(array(
             'response'  => $response
         ));
     }
 
-    private function _validarFechas($fechaInicio,$fechaFin,$isMaster=0){
+    private function _validarFechas($fechaInicio, $fechaFin, $idCondicion, $idsolicitante, $isMaster = 0)
+    {
+
         $response = array('Result' => 'ERROR', 'Message' => '', 'Records' => array());
         require_once $this->getDefaultModelName();
         require_once $this->getModelByName('VacacionConfiguracion', 'vacacionconfiguracion');
         require_once $this->getModelByName('DiasNoLaborable', 'diasnolaborable');
         $vacaConfigObj = new VacacionConfiguracionModel();
         $diasNoLaborableObj = new DiasNoLaborableModel();
+        $vacacionModelObj = new VacacionModel();
 
         $dateInicio = new DateTime($fechaInicio);
         $dateFin = new DateTime($fechaFin);
         $interval = $dateInicio->diff($dateFin);
-        $numDias = (int)$interval->format('%r%a')+1;
+        $numDias = (int)$interval->format('%r%a') + 1;
 
         $regDiasNoLaborable = $diasNoLaborableObj->getDiasSemanaNoLaborables();
 
         $minimoDiasReg = $vacaConfigObj->getConfigById(1);
         $maximoDiasReg = $vacaConfigObj->getConfigById(3);
-        if($minimoDiasReg[0]->valor <= $numDias || $isMaster){
-            if($maximoDiasReg[0]->valor >= $numDias || $isMaster){
-                // El inicio y el fin de las vacaciones ahora puede ser un dia no laborable.
-                /*$diaReingreso = new DateTime($dateFin->format('Y-m-d'));
-                $diaReingreso->add(new DateInterval('P1D'));
-                $validFechaInicio = $diasNoLaborableObj->getInfobyFecha($dateInicio->format('Y-m-d'));
 
-                $fechaInicioLaborable = true;
-                $indiceFechaInicio = $dateInicio->format('N');
-                foreach ($regDiasNoLaborable as $row) {
-                    if($row->indice == $indiceFechaInicio ){
-                        $fechaInicioLaborable = false;
-                        break;
-                    }
-                }
 
-                if((empty($validFechaInicio) && $fechaInicioLaborable) || $isMaster){
-                    $validFechaFin = $diasNoLaborableObj->getInfobyFecha($diaReingreso->format('Y-m-d'));
+        if ($idCondicion != 3) {
+            $periodoActual = $vacacionModelObj->_obtenerPeriodo($idsolicitante);
 
-                    $fechaReIngresoLaborable = true;
-                    $indiceFechaReIngreso = $diaReingreso->format('N');
-                    foreach ($regDiasNoLaborable as $row) {
-                        if($row->indice == $indiceFechaReIngreso ){
-                            $fechaReIngresoLaborable = false;
-                            break;
-                        }
-                    }
+            $numSolicitud = $vacacionModelObj->_obtenerNumeroSolicitud($idsolicitante, $periodoActual[0]->periodo);
 
-                    if((empty($validFechaFin) && $fechaReIngresoLaborable) || $isMaster){*/
-                        $response['Result'] = 'OK';
-                    /*}else{
-                        $response['Message'] = 'La fecha de reingreso debe ser un día laborable';
-                    }
-                }else{
-                    $response['Message'] = 'El inicio de vacaciones debe ser un día laborable';
-                }*/
-            }else{
-                $response['Message'] = 'La cantidad máxima de vacaciones es '.$maximoDiasReg[0]->valor;
+            // var_dump($periodoActual);
+            // var_dump($numSolicitud);
+            // die();
+
+            // Validar según el número de solicitud
+            if ($numSolicitud == 1) {
+                $validacion = $this->_validarPrimeraSolicitud($numDias);
+                $response = $validacion;
+            } else if ($numSolicitud == 2) {
+                // Obtener días de la primera solicitud
+                $diasPrimeraSolicitud = $vacacionModelObj->_obtenerDiasConsumidosPeriodo($idsolicitante, $periodoActual[0]->periodo, 1);
+
+                $validacion = $this->_validarSegundaSolicitud($numDias, $diasPrimeraSolicitud[0]->dias_consumidos);
+                $response = $validacion;
+            } else if ($numSolicitud >= 3) {
+
+                // die();
+                // Obtener días del subperiodo 1 y 2
+                $diasSubperiodo1 = $vacacionModelObj->_obtenerDiasConsumidosPeriodo($idsolicitante, $periodoActual[0]->periodo, 1);
+                $diasSubperiodo1Consumidos = $diasSubperiodo1[0]->dias_consumidos;
+                $diasSubperiodo2 = $vacacionModelObj->_obtenerDiasConsumidosPeriodo($idsolicitante, $periodoActual[0]->periodo, 2);
+                $diasSubperiodo2Consumidos = $diasSubperiodo2[0]->dias_consumidos;
+
+                $diasNoHabil = $vacacionModelObj->_obtenerDiasConsumidosPeriodoNoHabil($idsolicitante, $periodoActual[0]->periodo);
+                $diasNoHabilConsumidos = $diasNoHabil[0]->dias_consumidos_no_habil;
+
+                $diasHabil = $vacacionModelObj->_obtenerDiasConsumidosPeriodoHabil($idsolicitante, $periodoActual[0]->periodo);
+                $diasHabilConsumidos = $diasHabil[0]->dias_consumidos_habil;
+
+                $validacion = $this->_validarTerceraSolicitud(
+                    $diasSubperiodo1Consumidos,
+                    $diasSubperiodo2Consumidos,
+                    $diasHabilConsumidos,
+                    $diasNoHabilConsumidos,
+                    $fechaInicio,
+                    $fechaFin
+                );
+                $response = $validacion;
+
+                // if (!$validacion['status']) {
+                //     $resultado['mensaje'] = $validacion['mensaje'];
+                //     return $resultado;
+                // }
             }
-        }else{
-            $response['Message'] = 'La cantidad mínima de vacaciones es '.$minimoDiasReg[0]->valor;
+
+            // if($minimoDiasReg[0]->valor <= $numDias || $isMaster){
+            //     if($maximoDiasReg[0]->valor >= $numDias || $isMaster){
+
+            //                 $response['Result'] = 'OK';
+
+            //     }else{
+            //         $response['Message'] = 'La cantidad máxima de vacaciones es '.$maximoDiasReg[0]->valor;
+            //     }
+            // }else{
+            //     $response['Message'] = 'La cantidad mínima de vacaciones es '.$minimoDiasReg[0]->valor;
+            // }
+        } else {
+            $validacionFechaEspecial = $this->validarFechasEspeciales($fechaInicio, $fechaFin, $idsolicitante);
+            $response = $validacionFechaEspecial;
+        }
+        return $response;
+    }
+
+    public function validarFechasEspeciales($fechaInicio, $fechaFin, $idsolicitante)
+    {
+        $this->sessionObj->checkJsonRequest();
+
+        require_once $this->getDefaultModelName();
+        $vacacionModelObj = new VacacionModel();
+
+        $idFechaEspecial = $vacacionModelObj->getFechaEspecial($fechaInicio, $fechaFin, $idsolicitante);
+
+        if (count($idFechaEspecial) > 0) {
+            $response['idFechaEspecial'] = $idFechaEspecial[0]->id_vaca_especial;
+            $response['Result'] = 'OK';
+        } else {
+            $response['Result'] = 'ERROR';
+            $response['Message'] = 'No dispone de una fecha especial asignada.';
         }
 
         return $response;
     }
 
-    public function crear(){
-        $funcion = (isset($_POST['master']) && $_POST['master']) ? '/indexVacacionesMaster':'';
-        $this->sessionObj->checkJsonRequest($this->getAppName().$funcion, __FUNCTION__);
+    /**
+     * Valida las reglas para la primera solicitud de vacaciones
+     * @param int $diasSolicitados Cantidad de días solicitados
+     * @return array Resultado de la validación
+     */
+    private function _validarPrimeraSolicitud($diasSolicitados)
+    {
+        $resultado = array('Result' => "ERROR", 'Message' => '');
+
+        // Validar mínimo 7 días y máximo 30
+        if ($diasSolicitados < 7) {
+            $resultado['Message'] = 'La primera solicitud debe ser de mínimo 7 días.';
+            return $resultado;
+        }
+
+        if ($diasSolicitados > 30) {
+            $resultado['Message'] = 'La primera solicitud debe ser de máximo 30 días.';
+            return $resultado;
+        }
+
+        $resultado['Result'] = 'OK';
+        return $resultado;
+    }
+
+    /**
+     * Valida las reglas para la segunda solicitud de vacaciones
+     * @param int $diasSolicitados Cantidad de días solicitados
+     * @param int $diasPrimeraSolicitud Días de la primera solicitud
+     * @return array Resultado de la validación
+     */
+    private function _validarSegundaSolicitud($diasSolicitados, $diasPrimeraSolicitud)
+    {
+        $resultado = array('Result' => "ERROR", 'Message' => '');
+
+        // Determinar el mínimo de días según primera solicitud
+        $minimoRequerido = ($diasPrimeraSolicitud == 7) ? 8 : 7;
+
+        if ($diasSolicitados < $minimoRequerido) {
+            $resultado['Message'] = "La segunda solicitud debe ser de mínimo $minimoRequerido días.";
+            return $resultado;
+        }
+
+        $resultado['Result'] = 'OK';
+        return $resultado;
+    }
+
+    /**
+     * Valida las reglas para la tercera solicitud de vacaciones
+     * @param int $diasSolicitados Cantidad de días solicitados
+     * @param int $diasSubperiodo1 Días consumidos en subperiodo 1
+     * @param int $diasNoHabilConsumo Días no hábiles ya consumidos en subperiodo 2
+     * @return array Resultado de la validación
+     */
+    private function _validarTerceraSolicitud($diasSubperiodo1, $diasSubperiodo2, $diasHabilConsumo, $diasNoHabilConsumo, $fechaInicio, $fechaFin)
+    {
+        require_once $this->getDefaultModelName();
+        require_once $this->getModelByName('VacacionConfiguracion', 'vacacionconfiguracion');
+
+        $vacaConfigObj = new VacacionConfiguracionModel();
+        $vacacionModelObj = new VacacionModel();
+        // var_dump('entreeeeee');
+        // die();
+
+        $resultado = array('Result' => "ERROR", 'Message' => '');
+
+        // Validar que se haya consumido todo el subperiodo 1
+        if ($diasSubperiodo1 < 15) {
+            $resultado['Message'] = "Debe consumir los 15 días del primer subperiodo antes de registrar esta solicitud.";
+            return $resultado;
+        }
+
+        // Contar días hábiles y no hábiles en la solicitud actual (rango de fechas)
+        $diasTipoActual = $vacacionModelObj->_sumarDiasPorTipo($fechaInicio, $fechaFin);
+        $totalDiasSolicitados = $diasTipoActual['habil'] + $diasTipoActual['no_habil'];
+
+        // Obtener configuración para días flexibles
+        $diasFlexiblesConfig = $vacaConfigObj->getConfigById(6);
+        $diasFlexibles = intval($diasFlexiblesConfig[0]->valor); // Por defecto 5 días flexibles
+
+        // Ya ha consumido los días flexibles, ahora validar los días no hábiles para el segundo subperiodo
+        $diasRestantesNoHabils = max(0, 8 - $diasNoHabilConsumo); // Solo se necesitan 4 días no hábiles en el segundo subperiodo
+
+        // Verificar si la solicitud incluye suficientes días no hábiles (sábados o domingos)
+        $diasFinDeSemanaIncluidos = $vacacionModelObj->_sumarDiasPorTipo($fechaInicio, $fechaFin);
+        $diasNoHabilesxRangoDeFecha = $diasFinDeSemanaIncluidos['no_habil'];
+        $diasHabilesxRangoDeFecha = $diasFinDeSemanaIncluidos['habil'];
+
+        if ($diasSubperiodo2 < $diasFlexibles) {
+            // Está dentro de los días flexibles, verificar que no sobrepase el límite
+            if (($diasSubperiodo2 + $diasTipoActual['habil']) <= $diasFlexibles) {
+                $resultado['Result'] = 'OK';
+                return $resultado;
+            } else {
+                if(($diasHabilConsumo + $diasHabilesxRangoDeFecha) <= 22){
+                    $incluyeFinDeSemana = $this->_verificarInclucionFinDeSemana($fechaInicio, $fechaFin);
+                    if (!$incluyeFinDeSemana) {
+                        $resultado['Message'] = "Su solicitud debe incluir fin de semana.";
+                        return $resultado;
+                    }
+                    $resultado['Result'] = 'OK';
+                    return $resultado;
+                }else {
+                    $resultado['Message'] = "Su solicitud debe incluir fin de semana.";
+                    return $resultado;
+                }
+                // Sobrepasa los días flexibles, debe incluir fin de semana obligatorio
+                // Verificar si la solicitud incluye sábado y domingo
+                $incluyeFinDeSemana = $this->_verificarInclucionFinDeSemana($fechaInicio, $fechaFin);
+                if (!$incluyeFinDeSemana) {
+                    $resultado['Message'] = "Al sobrepasar los {$diasFlexibles} días flexibles, debe incluir obligatoriamente un sábado y domingo en su solicitud.";
+                    return $resultado;
+                }
+                $resultado['Result'] = 'OK';
+                return $resultado;
+            }
+        } else {
+            if($diasNoHabilConsumo >= 8){
+                $resultado['Result'] = 'OK';
+                return $resultado;
+            }
+
+            if(($diasHabilConsumo + $diasHabilesxRangoDeFecha) <= 22){
+                $incluyeFinDeSemana = $this->_verificarInclucionFinDeSemana($fechaInicio, $fechaFin);
+                if (!$incluyeFinDeSemana) {
+                    $resultado['Message'] = "Su solicitud debe incluir fin de semana.";
+                    return $resultado;
+                }
+                $resultado['Result'] = 'OK';
+                return $resultado;
+            }else {
+                $resultado['Message'] = "Su solicitud debe incluir fin de semana.";
+                return $resultado;
+            }
+
+            // // Si los días no hábiles solicitados son menores a los 4 requeridos, devolver error
+            // if ($diasNoHabilesxRangoDeFecha < $diasRestantesNoHabils) {
+            //     $diasRestantes = $diasRestantesNoHabils - $diasNoHabilesxRangoDeFecha;
+            //     // echo('Hola'. $diasRestantes .  $diasNoHabilesxRangoDeFecha);
+            //     // die();
+            //     $resultado['Message'] = "Debe seleccionar fechas que incluyan al menos {$diasRestantes} días adicionales de fin de semana (sábado o domingo).";
+            //     return $resultado;
+            // }
+
+            // Si el total de días no hábiles es suficiente
+            $resultado['Result'] = 'OK';
+            return $resultado;
+        }
+    }
+
+    public function crear()
+    {
+        $funcion = (isset($_POST['master']) && $_POST['master']) ? '/indexVacacionesMaster' : '';
+        $this->sessionObj->checkJsonRequest($this->getAppName() . $funcion, __FUNCTION__);
         $config = Config::singleton();
 
-        require_once $config->get('classesFolder') .'gump.class.php';
+        require_once $config->get('classesFolder') . 'gump.class.php';
         require_once $this->getDefaultModelName();
         $gump = new GUMP();
         $vacacionModelObj = new VacacionModel();
@@ -513,40 +727,56 @@ class VacacionController extends ControllerBase {
             'cboCondicion'   => 'required',
             'txtFechaInicio' => 'required',
             'txtFechaFin'    => 'required',
-            'txtCantidadDias'=> 'required'
+            'txtCantidadDias' => 'required'
         ));
 
         $status = $gump->run($_POST);
         $response = array('Result' => 'ERROR', 'Message' => '');
 
-        if($status){
-            require $config->get('classesFolder') .'Input.php';
+        if ($status) {
+            require $config->get('classesFolder') . 'Input.php';
             $input = new CI_Input();
 
             $statusCantidadDias = $this->_validarCantidadDias($input->post(NULL));
-            if($statusCantidadDias['status']){
-                $statusRangoFecha = $this->_validarFechas($input->post('txtFechaInicio'),$input->post('txtFechaFin'),$input->post('master'));
-                if($statusRangoFecha['Result'] === 'OK'){
-                    $vacaCruzadas = $vacacionModelObj->getVacacionesFromDate($input->post('cboSolicitante'),$input->post('txtFechaInicio'),$input->post('txtFechaFin'));
-                    if(empty($vacaCruzadas)){
-                        $estadoRegistro = $vacacionModelObj->createVacacion($input->post(NULL));
-                        if($estadoRegistro['status']){
-                            $this->sessionObj->RegisterAccion($this->getAppName().$funcion, __FUNCTION__, $estadoRegistro['id']);
+
+            // Validar que no se seleccione vacaciones truncas si tiene vacaciones vencidas o ganadas
+            // y que no se mezclen periodos en una misma solicitud
+            $postData = $input->post(NULL);
+            $validarCondicionTruncas = $this->_validarCondicionTruncas($postData['cboSolicitante'], $postData['cboCondicion'], $postData);
+            if (!$validarCondicionTruncas['status']) {
+                $response["Message"] = $validarCondicionTruncas['mensaje'];
+                $this->view->showJSONPlane(array('response' => $response));
+                return;
+            }
+
+            if ($statusCantidadDias['status']) {
+
+                $statusRangoFecha = $this->_validarFechas($input->post('txtFechaInicio'), $input->post('txtFechaFin'), $input->post('cboCondicion'), $input->post('cboSolicitante'), $input->post('master'));
+                if ($statusRangoFecha['Result'] === 'OK') {
+                    // var_dump('validar antes');
+                    // die();
+
+                    $idVacacionEspecial = isset($statusRangoFecha['idFechaEspecial']) ? $statusRangoFecha['idFechaEspecial'] : null;
+                    $vacaCruzadas = $vacacionModelObj->getVacacionesFromDate($input->post('cboSolicitante'), $input->post('txtFechaInicio'), $input->post('txtFechaFin'));
+                    if (empty($vacaCruzadas)) {
+                        $estadoRegistro = $vacacionModelObj->createVacacion($input->post(NULL), $idVacacionEspecial);
+                        if ($estadoRegistro['status']) {
+                            $this->sessionObj->RegisterAccion($this->getAppName() . $funcion, __FUNCTION__, $estadoRegistro['id']);
                             $response['Result'] = 'OK';
                             $response['id'] = $estadoRegistro['id'];
-                        }else{
+                        } else {
                             $response["Message"] = $estadoRegistro['mensaje'];
                         }
-                    }else{
+                    } else {
                         $response["Message"] = 'Existen vacaciones cruzadas en las fechas indicadas';
                     }
-                }else{
+                } else {
                     $response["Message"] = $statusRangoFecha['Message'];
                 }
-            }else{
+            } else {
                 $response["Message"] = $statusCantidadDias['mensaje'];
             }
-        }else{
+        } else {
             $response["Message"] = $gump->get_readable_errors(true);
         }
 
@@ -555,28 +785,32 @@ class VacacionController extends ControllerBase {
         ));
     }
 
-    private function _validarCantidadDias($reg){
+    private function _validarCantidadDias($reg)
+    {
         require_once $this->getModelByName('Reporte', 'reporte');
         require_once $this->getDefaultModelName();
         $vacacionModelObj = new VacacionModel();
         $reporteModelObj = new ReporteModel();
 
-        $idSolicitud = isset($reg['idSolicitud'])? $reg['idSolicitud'] : 0;
+        $idSolicitud = isset($reg['idSolicitud']) ? $reg['idSolicitud'] : 0;
 
         $userInfo = $this->sessionObj->getUserInfo($reg['cboSolicitante']);
-        $vacacion = $reporteModelObj->getReporteVacaciones(date('d/m/Y'),'01','','','','','',"'".$userInfo[0]->USUARIO."'");
 
-        $regProgramados = $vacacionModelObj->getNumProgramadas($reg['cboSolicitante'],1,$idSolicitud);
-        $regProgramadosAcuenta = $vacacionModelObj->getNumProgramadas($reg['cboSolicitante'],2,$idSolicitud);
+        $vacacion = $reporteModelObj->getReporteVacaciones(date('d/m/Y'), '01', '', '', '', '', '', "'" . $userInfo[0]->USUARIO . "'");
 
-        $usoVaca = $this->_formatVacionesOfisis($vacacion,$regProgramados,1);
+        $regProgramados = $vacacionModelObj->getNumProgramadas($reg['cboSolicitante'], 1, $idSolicitud);
+
+        $regProgramadosAcuenta = $vacacionModelObj->getNumProgramadas($reg['cboSolicitante'], 2, $idSolicitud);
+
+        $usoVaca = $this->_formatVacionesOfisis($vacacion, $regProgramados, 1);
+
         //$aCuentaVaca = $this->_formatVacionesOfisis($vacacion,$regProgramadosAcuenta,2);
 
         $response = array('status' => false, 'mensaje' => '');
 
         //Validar que acabe sus vacaciones ganadas
-        if($reg['cboCondicion'] == 2 && $usoVaca['por_programar'] > 0){
-            $response['mensaje'] = 'Primero debe consumir sus vacaciones ganadas, antes de usar las vacaciones truncas';
+        if ($reg['cboCondicion'] == 2 && $usoVaca['por_programar'] > 0) {
+            $response['mensaje'] = 'No puede seleccionar adelanto a cuenta de vacaciones truncas, si dispone de vacaciones vencidas o pendientes.';
             return $response;
         }
 
@@ -588,7 +822,7 @@ class VacacionController extends ControllerBase {
         $numDias = (int)$interval->format('%d')+1;
 
         if($porProgramar >= $numDias){*/
-            $response['status'] = true;
+        $response['status'] = true;
         /*}else{
             $response['mensaje'] = 'La cantidad de dias de vacaciones no debe ser mayor a '.$porProgramar;
         }*/
@@ -596,7 +830,62 @@ class VacacionController extends ControllerBase {
         return $response;
     }
 
-    public function buscarUsuario(){
+
+    /**
+     * Validar condición de vacaciones truncas y que no se mezclen periodos
+     */
+    private function _validarCondicionTruncas($idSolicitante, $condicion, $postData)
+    {
+        $result = array('status' => true, 'mensaje' => '');
+
+        // Obtener el consolidado de vacaciones del JSON
+        $consolidado = json_decode($postData['tblConsolidado'], true);
+        $diasVencidos = isset($consolidado['vencido']) ? floatval($consolidado['vencido']) : 0;
+        $diasGanados = isset($consolidado['ganado']) ? floatval($consolidado['ganado']) : 0;
+        $diasTruncos = isset($consolidado['trunco']) ? floatval($consolidado['trunco']) : 0;
+        $programado = isset($consolidado['programado']) ? floatval($consolidado['programado']) : 0;
+
+        // Validar que no se seleccione vacaciones truncas (condición 2) si hay vencidas o ganadas
+        if ($condicion == '2') {
+            if ($diasVencidos > 0 || $diasGanados > 0) {
+                $result['status'] = false;
+                $result['mensaje'] = 'No puede seleccionar adelanto a cuenta de vacaciones truncas, si dispone de vacaciones vencidas o pendientes.';
+                return $result;
+            }
+        }
+
+        // Validar que la cantidad de días solicitada no exceda el periodo seleccionado
+        $cantidadDias = intval($postData['txtCantidadDias']);
+        $disponiblesPeriodo = 0;
+
+        if ($condicion == '1') {
+            // Para condición 1, usar primero vencidas, luego ganadas
+            if ($diasVencidos > 0) {
+                $disponiblesPeriodo = $diasVencidos - $programado;
+                $tipoVacacion = 'vencidas';
+            } else {
+                $disponiblesPeriodo = $diasGanados - $programado;
+                $tipoVacacion = 'pendientes';
+            }
+        } else if ($condicion == '2') {
+            // Para condición 2, solo truncas
+            $disponiblesPeriodo = $diasTruncos - $programado;
+            $tipoVacacion = 'truncas';
+        } else {
+            return $result;
+        }
+
+        if ($cantidadDias > $disponiblesPeriodo) {
+            $result['status'] = false;
+            $result['mensaje'] = "Solo tienes disponible " . number_format($disponiblesPeriodo, 2) . " días en el periodo de vacaciones $tipoVacacion . Por favor, ajusta la cantidad de días solicitados.";
+        }
+
+        return $result;
+    }
+
+
+    public function buscarUsuario()
+    {
         $this->sessionObj->checkJsonRequest();
 
         $qryName = (isset($_REQUEST['q']) && $_REQUEST['q'] ? trim($_REQUEST['q']) : '');
@@ -607,7 +896,7 @@ class VacacionController extends ControllerBase {
         $directorioObj = new DirectorioModel();
 
         $userInfo = $this->sessionObj->getUserInfo();
-        $gerencias_gene = $boletaGeneObj->getGenerador("", "", $userInfo[0]->ID_USUARIO,3);
+        $gerencias_gene = $boletaGeneObj->getGenerador("", "", $userInfo[0]->ID_USUARIO, 3);
 
         if (empty($gerencias_gene)) {
             $regDirectorio = $directorioObj->buscarSimplePersona($qryName);
@@ -617,7 +906,7 @@ class VacacionController extends ControllerBase {
             $userInfo = $this->sessionObj->getUserInfo();
 
             foreach ($gerencias_gene as $key => $row) {
-                $gerencias.= $comma."'".$row->idUnidad."'";
+                $gerencias .= $comma . "'" . $row->idUnidad . "'";
             }
 
             $regDirectorio = $directorioObj->buscarSimplePersonaGerencia($qryName, $gerencias, $userInfo[0]->DNI);
@@ -643,7 +932,8 @@ class VacacionController extends ControllerBase {
         exit();
     }
 
-    public function buscarSolicitante(){
+    public function buscarSolicitante()
+    {
         $this->sessionObj->checkJsonRequest();
 
         $qryName = (isset($_REQUEST['q']) && $_REQUEST['q'] ? trim($_REQUEST['q']) : '');
@@ -655,7 +945,7 @@ class VacacionController extends ControllerBase {
         $directorioObj = new DirectorioModel();
 
         $userInfo = $this->sessionObj->getUserInfo();
-        $gerencias_gene = $boletaGeneObj->getGenerador("", "", $userInfo[0]->ID_USUARIO,3);
+        $gerencias_gene = $boletaGeneObj->getGenerador("", "", $userInfo[0]->ID_USUARIO, 3);
 
         if (empty($gerencias_gene) || $isMaster) {
             $regDirectorio = $directorioObj->buscarSimplePersona($qryName);
@@ -665,11 +955,11 @@ class VacacionController extends ControllerBase {
             $userInfo = $this->sessionObj->getUserInfo();
 
             foreach ($gerencias_gene as $key => $row) {
-                $gerencias.= $comma."'".$row->idUnidad."'";
+                $gerencias .= $comma . "'" . $row->idUnidad . "'";
                 $comma = ',';
             }
 
-            $jerarquias = $boletaGeneObj->getJerarquiaGeneracion("01",$userInfo[0]->ID_USUARIO,3);
+            $jerarquias = $boletaGeneObj->getJerarquiaGeneracion("01", $userInfo[0]->ID_USUARIO, 3);
             $regDirectorio = $directorioObj->buscarSimplePersonaGerencia($qryName, $gerencias, $userInfo[0]->DNI, $jerarquias);
         }
         $ajaxResponse = array();
@@ -679,8 +969,8 @@ class VacacionController extends ControllerBase {
             foreach ($regDirectorio as $row) {
                 //Retirar a los practicantes (Para generar solicitud de vacaciones)
                 if ($row->CO_PLAN <> 'FLJ') {
-                    $userInfo = $this->sessionObj->getUserInfo($row->CO_TRAB,true); //Obtener el codigo de usuario (seguridad)
-                    if(empty($userInfo)){
+                    $userInfo = $this->sessionObj->getUserInfo($row->CO_TRAB, true); //Obtener el codigo de usuario (seguridad)
+                    if (empty($userInfo)) {
                         continue;
                     }
                     $ajaxResponse[$count]['Value'] = $userInfo[0]->ID_USUARIO;
@@ -697,7 +987,8 @@ class VacacionController extends ControllerBase {
         exit();
     }
 
-    public function confirmarSolicitud(){
+    public function confirmarSolicitud()
+    {
         $this->sessionObj->checkJsonRequest();
 
         $config = Config::singleton();
@@ -752,9 +1043,10 @@ class VacacionController extends ControllerBase {
         ));
     }
 
-    public function borrar(){
-        $funcion = (isset($_POST['master']) && $_POST['master']) ? '/indexVacacionesMaster':'';
-        $this->sessionObj->checkJsonRequest($this->getAppName().$funcion, __FUNCTION__);
+    public function borrar()
+    {
+        $funcion = (isset($_POST['master']) && $_POST['master']) ? '/indexVacacionesMaster' : '';
+        $this->sessionObj->checkJsonRequest($this->getAppName() . $funcion, __FUNCTION__);
 
         $config = Config::singleton();
         require_once $config->get('classesFolder') . 'gump.class.php';
@@ -772,35 +1064,33 @@ class VacacionController extends ControllerBase {
             require $config->get('classesFolder') . 'Input.php';
             $vacacionModelObj = new VacacionModel();
             $input = new CI_Input();
-            $diaseliminar=$vacacionModelObj->getDiasEliminar();
+            $diaseliminar = $vacacionModelObj->getDiasEliminar();
             $userInfo = $this->sessionObj->getUserInfo();
             $regVacacion = $vacacionModelObj->getInfoVacacion($input->post('id_vacacion', true), 0);
             //obtener fecha actual para comprar
             $hoy = new DateTime(date('Y-m-d'));
             $interval = $hoy->diff($regVacacion[0]->fecha_crea);
             $dias = (int)$interval->format('%d');
-            if($dias<=$diaseliminar[0]->valor){
-    
+            if ($dias <= $diaseliminar[0]->valor) {
+
                 // echo "<pre>";
                 // print_r($dias);
                 // print_r($regVacacion[0]->fecha_crea);
                 // echo "</pre>";
                 // exit;
-                $validacion = $this->_validarParaEliminar((array)$regVacacion[0], $userInfo[0]->ID_USUARIO,$input->post('master'));
+                $validacion = $this->_validarParaEliminar((array)$regVacacion[0], $userInfo[0]->ID_USUARIO, $input->post('master'));
                 if ($validacion['resultado']) {
                     //Eliminar logicamente y no eliminar archivos adjuntos
                     $vacacionModelObj->eliminarLogicamente($input->post('id_vacacion', true));
-                    $this->sessionObj->RegisterAccion($this->getAppName().$funcion, __FUNCTION__, $input->post('id_vacacion', true));
+                    $this->sessionObj->RegisterAccion($this->getAppName() . $funcion, __FUNCTION__, $input->post('id_vacacion', true));
                     $response["Result"] = 'OK';
                 } else {
                     $response["Message"] = $validacion['mensaje'];
                 }
-
-            }else{
+            } else {
                 $response["Message"] = "Supera la fecha limite para eliminar el registro que es de 5 dias desde la fecha de creacion";
                 $response["Result"] = 'ERROR';
             }
-            
         } else {
             $response["Message"] = $gump->get_readable_errors(true);
         }
@@ -811,11 +1101,12 @@ class VacacionController extends ControllerBase {
         ));
     }
 
-    private function _validarParaEliminar($reg, $idUsuario,$master=0){
+    private function _validarParaEliminar($reg, $idUsuario, $master = 0)
+    {
         $response = array('resultado' => false);
 
         //Si es master, no considerar las validaciones
-        if(empty($master)){
+        if (empty($master)) {
             if ($reg['id_vaca_estado'] == 4 || $reg['id_vaca_estado'] == 5 || $reg['id_vaca_estado'] == 6) {
                 $response['mensaje'] = 'La solicitud ya se encuentra liberada completamente';
                 return $response;
@@ -831,7 +1122,8 @@ class VacacionController extends ControllerBase {
         return $response;
     }
 
-    public function confirmarEjecucion(){
+    public function confirmarEjecucion()
+    {
         $this->sessionObj->checkJsonRequest();
 
         $config = Config::singleton();
@@ -876,7 +1168,8 @@ class VacacionController extends ControllerBase {
         ));
     }
 
-    public function exportarBoleta(){
+    public function exportarBoleta()
+    {
         $this->sessionObj->checkJsonRequest();
 
         $qryIdVacacion = (isset($_POST['qryIdVacacion']) && $_POST['qryIdVacacion'] ? trim($_POST['qryIdVacacion']) : 0);
@@ -909,14 +1202,14 @@ class VacacionController extends ControllerBase {
 
                 ob_end_clean();
 
-                require_once $config->get('libsFolder').'html2pdf/vendor/autoload.php';
+                require_once $config->get('libsFolder') . 'html2pdf/vendor/autoload.php';
                 try {
 
                     $html2pdf = new Html2Pdf('P', 'A4', 'es', true, 'UTF-8', array(10, 5, 10, 10));
                     $html2pdf->setDefaultFont('Arial');
-                    $html2pdf->pdf->SetTitle('Solicitud_'.$qryIdVacacion);
+                    $html2pdf->pdf->SetTitle('Solicitud_' . $qryIdVacacion);
                     $html2pdf->writeHTML($content);
-                    $html2pdf->output('Solicitud_'.$qryIdVacacion.'.pdf');
+                    $html2pdf->output('Solicitud_' . $qryIdVacacion . '.pdf');
                 } catch (Html2PdfException $e) {
                     $html2pdf->clean();
                     $formatter = new ExceptionFormatter($e);
@@ -934,12 +1227,13 @@ class VacacionController extends ControllerBase {
 
     /************************************************* FUNCIONALIDADES PARA LA EDICION *********************************************/
 
-    public function editar(){
-        $funcion = (isset($_POST['master']) && $_POST['master']) ? '/indexVacacionesMaster':'';
-        $this->sessionObj->checkJsonRequest($this->getAppName().$funcion, __FUNCTION__);
+    public function editar()
+    {
+        $funcion = (isset($_POST['master']) && $_POST['master']) ? '/indexVacacionesMaster' : '';
+        $this->sessionObj->checkJsonRequest($this->getAppName() . $funcion, __FUNCTION__);
         $config = Config::singleton();
 
-        require_once $config->get('classesFolder') .'gump.class.php';
+        require_once $config->get('classesFolder') . 'gump.class.php';
         require_once $this->getDefaultModelName();
         $gump = new GUMP();
         $vacacionModelObj = new VacacionModel();
@@ -950,40 +1244,40 @@ class VacacionController extends ControllerBase {
             'cboCondicion'   => 'required',
             'txtFechaInicio' => 'required',
             'txtFechaFin'    => 'required',
-            'txtCantidadDias'=> 'required'
+            'txtCantidadDias' => 'required'
         ));
 
         $status = $gump->run($_POST);
         $response = array('Result' => 'ERROR', 'Message' => '');
 
-        if($status){
-            require $config->get('classesFolder') .'Input.php';
+        if ($status) {
+            require $config->get('classesFolder') . 'Input.php';
             $input = new CI_Input();
 
             $statusCantidadDias = $this->_validarCantidadDias($input->post(NULL));
-            if($statusCantidadDias['status']){
-                $statusRangoFecha = $this->_validarFechas($input->post('txtFechaInicio'),$input->post('txtFechaFin'),$input->post('master'));
-                if($statusRangoFecha['Result'] === 'OK'){
-                    $vacaCruzadas = $vacacionModelObj->getVacacionesFromDate($input->post('cboSolicitante'),$input->post('txtFechaInicio'),$input->post('txtFechaFin'),$input->post('idSolicitud'));
-                    if(empty($vacaCruzadas)){
+            if ($statusCantidadDias['status']) {
+                $statusRangoFecha = $this->_validarFechas($input->post('txtFechaInicio'), $input->post('txtFechaFin'), $input->post('cboCondicion'), $input->post('cboSolicitante'), $input->post('master'));
+                if ($statusRangoFecha['Result'] === 'OK') {
+                    $vacaCruzadas = $vacacionModelObj->getVacacionesFromDate($input->post('cboSolicitante'), $input->post('txtFechaInicio'), $input->post('txtFechaFin'), $input->post('idSolicitud'));
+                    if (empty($vacaCruzadas)) {
                         $estadoRegistro = $vacacionModelObj->editVacacion($input->post(NULL));
-                        if($estadoRegistro['status']){
-                            $this->sessionObj->RegisterAccion($this->getAppName().$funcion, __FUNCTION__, $input->post('idSolicitud'));
+                        if ($estadoRegistro['status']) {
+                            $this->sessionObj->RegisterAccion($this->getAppName() . $funcion, __FUNCTION__, $input->post('idSolicitud'));
                             $response['Result'] = 'OK';
                             $response['id'] = $estadoRegistro['id'];
-                        }else{
+                        } else {
                             $response["Message"] = $estadoRegistro['mensaje'];
                         }
-                    }else{
+                    } else {
                         $response["Message"] = 'Existen vacaciones cruzadas en las fechas indicadas';
                     }
-                }else{
+                } else {
                     $response["Message"] = $statusRangoFecha['Message'];
                 }
-            }else{
+            } else {
                 $response["Message"] = $statusCantidadDias['mensaje'];
             }
-        }else{
+        } else {
             $response["Message"] = $gump->get_readable_errors(true);
         }
 
@@ -992,10 +1286,11 @@ class VacacionController extends ControllerBase {
         ));
     }
 
-    public function exportar($master = false){
+    public function exportar($master = false)
+    {
         $app = $this->getAppName();
 
-        if($master){
+        if ($master) {
             $app .= '/indexVacacionesMaster';
         }
         $this->sessionObj->checkJsonRequest($app, "exportar");
@@ -1024,13 +1319,15 @@ class VacacionController extends ControllerBase {
         $this->_exportarDataBoleta($arrVacaciones);
     }
 
-    public function exportarMaster(){
+    public function exportarMaster()
+    {
         $this->exportar(true);
     }
 
-    public function exportarMasterCP(){
-        $this->sessionObj->checkJsonRequest($this->getAppName().'/indexVacacionesMasterCP', "exportar");
-        $this->sessionObj->RegisterAccion($this->getAppName().'/indexVacacionesMasterCP', "exportar", 0);
+    public function exportarMasterCP()
+    {
+        $this->sessionObj->checkJsonRequest($this->getAppName() . '/indexVacacionesMasterCP', "exportar");
+        $this->sessionObj->RegisterAccion($this->getAppName() . '/indexVacacionesMasterCP', "exportar", 0);
         $qryGerencia = (isset($_REQUEST['qry_gerencia']) && $_REQUEST['qry_gerencia'] ? trim($_REQUEST['qry_gerencia']) : 0);
 
         $config = Config::singleton();
@@ -1069,8 +1366,9 @@ class VacacionController extends ControllerBase {
         $this->_exportarDataBoleta($arrVacaciones);
     }
 
-    private function _exportarDataBoleta($arrVacaciones) {
-        $columName = array('ID','GERENCIA', 'DEPARTAMENTO', 'AREA', 'SECCION', 'SOLICITANTE', 'DNI SOLICITANTE','GENERADOR', 'DNI GENERADOR','FECHA SOLICITUD', 'CONDICION', 'FECHA INICIO', 'FECHA_FIN', 'CANTIDAD DIAS', 'ESTADO', 'TIPO', 'AUTORIZADOR 1RA', 'DNI AUTORIZADOR 1RA','AUTORIZADOR 2DA','DNI AUTORIZADOR 2DA');
+    private function _exportarDataBoleta($arrVacaciones)
+    {
+        $columName = array('ID', 'GERENCIA', 'DEPARTAMENTO', 'AREA', 'SECCION', 'SOLICITANTE', 'DNI SOLICITANTE', 'GENERADOR', 'DNI GENERADOR', 'FECHA SOLICITUD', 'CONDICION', 'FECHA INICIO', 'FECHA_FIN', 'CANTIDAD DIAS', 'ESTADO', 'TIPO', 'AUTORIZADOR 1RA', 'DNI AUTORIZADOR 1RA', 'AUTORIZADOR 2DA', 'DNI AUTORIZADOR 2DA');
         $lastRow = count($arrVacaciones) + 1;
         $objPHPExcel = new PHPExcel();
         $objPHPExcel->getProperties()->setCreator("Laboratorios ACFARMA - Sistemas")->setTitle("Listado de Boletas de vacaciones");
@@ -1116,14 +1414,15 @@ class VacacionController extends ControllerBase {
 
     /************************************************ NOTIFICACIONES DE CONFIRMACION ************************************************/
 
-    public function notificarPendientesEjecucion(){
+    public function notificarPendientesEjecucion()
+    {
         $request = ManageRequest::singleton();
         $config = Config::singleton();
 
         $params = $request->getParams();
         $token = $config->get('keyExecJob');
 
-        if(empty($params) || empty($params[0]) || $params[0] !== $token){
+        if (empty($params) || empty($params[0]) || $params[0] !== $token) {
             echo 'Clave incorrecta para inicio de Proceso';
             exit();
         }
@@ -1132,25 +1431,28 @@ class VacacionController extends ControllerBase {
         $vacacionModelObj = new VacacionModel();
         $pendientes = $vacacionModelObj->getPendientesEjecucion();
 
-        if(empty($pendientes)){
-            echo 'No existen pendientes a notificar';exit();
+        if (empty($pendientes)) {
+            echo 'No existen pendientes a notificar';
+            exit();
         }
 
         foreach ($pendientes as $vacacion) {
             $vacacionModelObj->proccessMailPendienteEjecucion($vacacion);
         }
 
-        echo 'Se procesaron las notificaciones';exit();
+        echo 'Se procesaron las notificaciones';
+        exit();
     }
 
-    public function notificarPendientesEjecucionGerencia(){
+    public function notificarPendientesEjecucionGerencia()
+    {
         $request = ManageRequest::singleton();
         $config = Config::singleton();
 
         $params = $request->getParams();
         $token = $config->get('keyExecJob');
 
-        if(empty($params) || empty($params[0]) || $params[0] !== $token){
+        if (empty($params) || empty($params[0]) || $params[0] !== $token) {
             echo 'Clave incorrecta para inicio de Proceso';
             exit();
         }
@@ -1161,11 +1463,11 @@ class VacacionController extends ControllerBase {
         $boletaInstObj = new BoletaInstanciasModel();
 
         //$estrategias = $authModelObj->getEstrategia();
-        $jerarquias = $boletaInstObj->getAprobadoresJerarquia('2',3);
+        $jerarquias = $boletaInstObj->getAprobadoresJerarquia('2', 3);
 
         foreach ($jerarquias as $estrategia) {
             $solicitudes = $vacacionModelObj->getPendientesEjecucion($estrategia->idUnidad);
-            if(!empty($solicitudes)){
+            if (!empty($solicitudes)) {
                 $vacacionModelObj->processMailPendienteEjecucionGerencia($solicitudes);
             }
         }
@@ -1174,11 +1476,12 @@ class VacacionController extends ControllerBase {
     }
 
     /********************************************* REPORTE DE CRONOGRAMA DE VACACIONES *****************************************/
-    public function indexCronogramaVacaciones(){
-        
+    public function indexCronogramaVacaciones()
+    {
+
         $this->sessionObj->checkInner();
         require $this->getDefaultModelName();
-        require $this->getModelByName('Directorio','directorio');
+        require $this->getModelByName('Directorio', 'directorio');
         require_once $this->getModelByName('VacacionConfiguracion', 'vacacionconfiguracion');
 
         $vacacionModelObj  = new VacacionModel();
@@ -1205,7 +1508,8 @@ class VacacionController extends ControllerBase {
         ));
     }
 
-    public function listarCronograma(){
+    public function listarCronograma()
+    {
         $this->sessionObj->checkJsonRequest();
 
         $qry_empresa = (isset($_REQUEST['qry_empresa']) && $_REQUEST['qry_empresa'] ? trim($_REQUEST['qry_empresa']) : '');
@@ -1217,8 +1521,8 @@ class VacacionController extends ControllerBase {
         $qry_colaborador = (isset($_REQUEST['qry_colaborador']) && $_REQUEST['qry_colaborador'] ? trim($_REQUEST['qry_colaborador']) : '');
         $qry_ini_rango = (isset($_REQUEST['qry_ini_rango']) && $_REQUEST['qry_ini_rango'] ? trim($_REQUEST['qry_ini_rango']) : 0);
         $qry_fin_rango = (isset($_REQUEST['qry_fin_rango']) && $_REQUEST['qry_fin_rango'] ? trim($_REQUEST['qry_fin_rango']) : 0);
-        
-        
+
+
         require $this->getModelByName('Reporte', 'reporte');
         require $this->getDefaultModelName();
         $vacacionModelObj = new VacacionModel();
@@ -1228,10 +1532,10 @@ class VacacionController extends ControllerBase {
 
         $userInfo = $this->sessionObj->getUserInfo();
         $dnis = $reporteModelObj->getDnisJerarquia2($userInfo[0]->DNI);
-        $dnis = ($dnis)?$dnis:'';
+        $dnis = ($dnis) ? $dnis : '';
 
         $regProgramados = $vacacionModelObj->listCronograma($qry_empresa, $qry_gerencia, $qryDepartamento, $qry_area, $qry_seccion, $estado, $colaborador, $qry_ini_rango, $qry_fin_rango, $dnis);
-        
+
         $colaboradores = $this->_armandoArrayEstados($regProgramados);
         $regProgr['data'] = $colaboradores;
 
@@ -1240,7 +1544,8 @@ class VacacionController extends ControllerBase {
         ));
     }
 
-    public function exportarCronograma2(){
+    public function exportarCronograma2()
+    {
         $this->sessionObj->checkJsonRequest();
 
         $qry_empresa = (isset($_REQUEST['qry_empresa']) && $_REQUEST['qry_empresa'] ? trim($_REQUEST['qry_empresa']) : '');
@@ -1251,12 +1556,12 @@ class VacacionController extends ControllerBase {
         $qry_colaborador = (isset($_REQUEST['qry_colaborador']) && $_REQUEST['qry_colaborador'] ? trim($_REQUEST['qry_colaborador']) : '');
         $qry_ini_rango = (isset($_REQUEST['qry_ini_rango']) && $_REQUEST['qry_ini_rango'] ? trim($_REQUEST['qry_ini_rango']) : 0);
         $qry_fin_rango = (isset($_REQUEST['qry_fin_rango']) && $_REQUEST['qry_fin_rango'] ? trim($_REQUEST['qry_fin_rango']) : 0);
-        
+
         $config = Config::singleton();
         require $this->getModelByName('Reporte', 'reporte');
         require $this->getDefaultModelName();
         require_once $config->get('libsFolder') . 'PHPExcel/PHPExcel.php';
-        
+
         $vacacionModelObj = new VacacionModel();
         $reporteModelObj = new ReporteModel();
 
@@ -1266,8 +1571,31 @@ class VacacionController extends ControllerBase {
 
         $columnfilaA = array('EMPRESA', 'GERENCIA', 'AREA', 'SECCION', "DOCUMENTOS", 'COLABORADOR', 'ESTADO', $qry_ini_rango);
         $columName = array(
-            'Ene.', 'Feb.', 'Mar.', 'Abr.', 'May.', 'Jun.', 'Jul.', 'Ago.', 'Set.', 'Oct.', 'Nov.', 'Dic.', 
-            'Ene.', 'Feb.', 'Mar.', 'Abr.', 'May.', 'Jun.', 'Jul.', 'Ago.', 'Set.', 'Oct.', 'Nov.', 'Dic.');
+            'Ene.',
+            'Feb.',
+            'Mar.',
+            'Abr.',
+            'May.',
+            'Jun.',
+            'Jul.',
+            'Ago.',
+            'Set.',
+            'Oct.',
+            'Nov.',
+            'Dic.',
+            'Ene.',
+            'Feb.',
+            'Mar.',
+            'Abr.',
+            'May.',
+            'Jun.',
+            'Jul.',
+            'Ago.',
+            'Set.',
+            'Oct.',
+            'Nov.',
+            'Dic.'
+        );
 
         $lastRow = count($regProgramados) + 2;
         $objPHPExcel = new PHPExcel();
@@ -1329,7 +1657,8 @@ class VacacionController extends ControllerBase {
         $objWriter->save('php://output');
     }
 
-    public function exportarCronograma(){
+    public function exportarCronograma()
+    {
         $this->sessionObj->checkJsonRequest();
 
         $qry_empresa = (isset($_REQUEST['qry_empresa']) && $_REQUEST['qry_empresa'] ? trim($_REQUEST['qry_empresa']) : '');
@@ -1341,31 +1670,54 @@ class VacacionController extends ControllerBase {
         $qry_colaborador = (isset($_REQUEST['qry_colaborador']) && $_REQUEST['qry_colaborador'] ? trim($_REQUEST['qry_colaborador']) : '');
         $qry_ini_rango = (isset($_REQUEST['qry_ini_rango']) && $_REQUEST['qry_ini_rango'] ? trim($_REQUEST['qry_ini_rango']) : 0);
         $qry_fin_rango = (isset($_REQUEST['qry_fin_rango']) && $_REQUEST['qry_fin_rango'] ? trim($_REQUEST['qry_fin_rango']) : 0);
-        
+
         $config = Config::singleton();
         require $this->getModelByName('Reporte', 'reporte');
         require_once $this->getModelByName('VacacionConfiguracion', 'vacacionconfiguracion');
         require $this->getDefaultModelName();
         require_once $config->get('libsFolder') . 'PHPExcel/PHPExcel.php';
-        
+
         $vacacionModelObj = new VacacionModel();
         $reporteModelObj = new ReporteModel();
         $vacaConfigObj = new VacacionConfiguracionModel();
 
         $userInfo = $this->sessionObj->getUserInfo();
         $dnis = $reporteModelObj->getDnisJerarquia2($userInfo[0]->DNI);
-        $dnis = ($dnis)?$dnis:'';
+        $dnis = ($dnis) ? $dnis : '';
 
         $colaborador = $qry_colaborador;
         $estado = $qry_estado;
         $regProgramados = $vacacionModelObj->listCronograma($qry_empresa, $qry_gerencia, $qryDepartamento, $qry_area, $qry_seccion, $estado, $colaborador, $qry_ini_rango, $qry_fin_rango, $dnis);
 
         $programados = $this->_armandoArrayEstados($regProgramados);
-        
+
         $columnfilaA = array('EMPRESA', 'GERENCIA', 'DEPARTAMENTO', 'AREA', 'SECCION', "DOCUMENTOS", 'COLABORADOR', $qry_ini_rango);
         $columName = array(
-            'Ene.', 'Feb.', 'Mar.', 'Abr.', 'May.', 'Jun.', 'Jul.', 'Ago.', 'Set.', 'Oct.', 'Nov.', 'Dic.', 
-            'Ene.', 'Feb.', 'Mar.', 'Abr.', 'May.', 'Jun.', 'Jul.', 'Ago.', 'Set.', 'Oct.', 'Nov.', 'Dic.');
+            'Ene.',
+            'Feb.',
+            'Mar.',
+            'Abr.',
+            'May.',
+            'Jun.',
+            'Jul.',
+            'Ago.',
+            'Set.',
+            'Oct.',
+            'Nov.',
+            'Dic.',
+            'Ene.',
+            'Feb.',
+            'Mar.',
+            'Abr.',
+            'May.',
+            'Jun.',
+            'Jul.',
+            'Ago.',
+            'Set.',
+            'Oct.',
+            'Nov.',
+            'Dic.'
+        );
 
         $objPHPExcel = new PHPExcel();
         $objPHPExcel->getProperties()->setCreator("Laboratorios ACFARMA - Sistemas")->setTitle("Cronograma Vacaciones");
@@ -1373,48 +1725,72 @@ class VacacionController extends ControllerBase {
         $objPHPExcel->getActiveSheet()->setShowGridlines(false);
 
         $estadosVacas = $vacaConfigObj->getEstados();
-        
+
         foreach ($estadosVacas as $k => $v) {
-            $objPHPExcel->getActiveSheet()->getCell('G'.($k+2))->setValue($v->vaca_estado);
+            $objPHPExcel->getActiveSheet()->getCell('G' . ($k + 2))->setValue($v->vaca_estado);
             $colorEstado  = substr($v->color, 1);
-            $objPHPExcel->getActiveSheet()->getStyle('H'.($k+2))->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
-            $objPHPExcel->getActiveSheet()->getStyle('H'.($k+2))->getFill()->getStartColor()->setRGB($colorEstado);
+            $objPHPExcel->getActiveSheet()->getStyle('H' . ($k + 2))->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
+            $objPHPExcel->getActiveSheet()->getStyle('H' . ($k + 2))->getFill()->getStartColor()->setRGB($colorEstado);
         }
 
         $ini = 8;
-        $lastRow = count($regProgramados)+$ini-1;
+        $lastRow = count($regProgramados) + $ini - 1;
         // Definimos el Color y Formato de Borde
-        $objPHPExcel->getActiveSheet()->getStyle('A'.$ini.':AE'.($ini+1))->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
-        $objPHPExcel->getActiveSheet()->getStyle('A'.$ini.':AE'.($ini+1))->getFill()->getStartColor()->setRGB('b23535');
+        $objPHPExcel->getActiveSheet()->getStyle('A' . $ini . ':AE' . ($ini + 1))->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
+        $objPHPExcel->getActiveSheet()->getStyle('A' . $ini . ':AE' . ($ini + 1))->getFill()->getStartColor()->setRGB('b23535');
         // Definimos el color y fuente de la fi primera Fila
-        $objPHPExcel->getActiveSheet()->getStyle('A'.$ini.':AE'.($ini+1))->getFont()->setBold(true)->getColor()->setRGB('FFFFFF');
-        $objPHPExcel->getActiveSheet()->getStyle('A'.$ini.':AE'.($ini+1))->getBorders()->getAllBorders()->setBorderStyle(PHPExcel_Style_Border::BORDER_THIN);
-        $objPHPExcel->getActiveSheet()->getStyle('A'.$ini.':AE'.($ini+1))->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
+        $objPHPExcel->getActiveSheet()->getStyle('A' . $ini . ':AE' . ($ini + 1))->getFont()->setBold(true)->getColor()->setRGB('FFFFFF');
+        $objPHPExcel->getActiveSheet()->getStyle('A' . $ini . ':AE' . ($ini + 1))->getBorders()->getAllBorders()->setBorderStyle(PHPExcel_Style_Border::BORDER_THIN);
+        $objPHPExcel->getActiveSheet()->getStyle('A' . $ini . ':AE' . ($ini + 1))->getAlignment()->setHorizontal(PHPExcel_Style_Alignment::HORIZONTAL_CENTER);
 
         //********************************************** CUERPO DE INFORME ***********************************************************
         // Recorremos el resultado de la consulta
-        $objPHPExcel->getActiveSheet()->mergeCells('A'.$ini .':A'.($ini +1));
-        $objPHPExcel->getActiveSheet()->mergeCells('B'.$ini .':B'.($ini +1));
-        $objPHPExcel->getActiveSheet()->mergeCells('C'.$ini .':C'.($ini +1));
-        $objPHPExcel->getActiveSheet()->mergeCells('D'.$ini .':D'.($ini +1));
-        $objPHPExcel->getActiveSheet()->mergeCells('E'.$ini .':E'.($ini +1));
-        $objPHPExcel->getActiveSheet()->mergeCells('F'.$ini .':F'.($ini +1));
-        $objPHPExcel->getActiveSheet()->mergeCells('G'.$ini .':G'.($ini +1));
+        $objPHPExcel->getActiveSheet()->mergeCells('A' . $ini . ':A' . ($ini + 1));
+        $objPHPExcel->getActiveSheet()->mergeCells('B' . $ini . ':B' . ($ini + 1));
+        $objPHPExcel->getActiveSheet()->mergeCells('C' . $ini . ':C' . ($ini + 1));
+        $objPHPExcel->getActiveSheet()->mergeCells('D' . $ini . ':D' . ($ini + 1));
+        $objPHPExcel->getActiveSheet()->mergeCells('E' . $ini . ':E' . ($ini + 1));
+        $objPHPExcel->getActiveSheet()->mergeCells('F' . $ini . ':F' . ($ini + 1));
+        $objPHPExcel->getActiveSheet()->mergeCells('G' . $ini . ':G' . ($ini + 1));
         // $objPHPExcel->getActiveSheet()->mergeCells('G1:G2');
-        $objPHPExcel->getActiveSheet()->mergeCells('H'.$ini .':S'.$ini);
-        $objPHPExcel->getActiveSheet()->mergeCells('T'.$ini .':AE'.$ini);
-        $objPHPExcel->getActiveSheet()->getCell('T'.$ini)->setValue($qry_fin_rango);
-        $objPHPExcel->getActiveSheet()->fromArray($columnfilaA, null, 'A'.$ini);
-        $objPHPExcel->getActiveSheet()->fromArray($columName, null, 'H'.($ini+1));
+        $objPHPExcel->getActiveSheet()->mergeCells('H' . $ini . ':S' . $ini);
+        $objPHPExcel->getActiveSheet()->mergeCells('T' . $ini . ':AE' . $ini);
+        $objPHPExcel->getActiveSheet()->getCell('T' . $ini)->setValue($qry_fin_rango);
+        $objPHPExcel->getActiveSheet()->fromArray($columnfilaA, null, 'A' . $ini);
+        $objPHPExcel->getActiveSheet()->fromArray($columName, null, 'H' . ($ini + 1));
 
-        $noPrintCol = array('id_vaca_estado', 'color',
-            'anio1_1', 'anio1_2', 'anio1_3', 'anio1_4', 'anio1_5', 'anio1_6', 'anio1_7', 'anio1_8', 'anio1_9', 'anio1_10', 'anio1_11', 'anio1_12', 
-            'anio2_1', 'anio2_2', 'anio2_3', 'anio2_4', 'anio2_5', 'anio2_6', 'anio2_7', 'anio2_8', 'anio2_9', 'anio2_10', 'anio2_11', 'anio2_12'
+        $noPrintCol = array(
+            'id_vaca_estado',
+            'color',
+            'anio1_1',
+            'anio1_2',
+            'anio1_3',
+            'anio1_4',
+            'anio1_5',
+            'anio1_6',
+            'anio1_7',
+            'anio1_8',
+            'anio1_9',
+            'anio1_10',
+            'anio1_11',
+            'anio1_12',
+            'anio2_1',
+            'anio2_2',
+            'anio2_3',
+            'anio2_4',
+            'anio2_5',
+            'anio2_6',
+            'anio2_7',
+            'anio2_8',
+            'anio2_9',
+            'anio2_10',
+            'anio2_11',
+            'anio2_12'
         );
 
         $noPrintFec = array('empresa', 'gerencia', 'area', 'seccion', 'dni', 'solicitante');
 
-        $f=7;
+        $f = 7;
         foreach ($programados as $index => $row) {
             foreach ($noPrintCol as $value) {
                 unset($row[$value]);
@@ -1422,202 +1798,202 @@ class VacacionController extends ControllerBase {
             $numFila = $f + 3;
             $cantFilas = count($row['vaca_estado']);
             if ($cantFilas > 1) {
-                $objPHPExcel->getActiveSheet()->mergeCells('A'.$numFila.':A'.($numFila+$cantFilas-1));
-                $objPHPExcel->getActiveSheet()->mergeCells('B'.$numFila.':B'.($numFila+$cantFilas-1));
-                $objPHPExcel->getActiveSheet()->mergeCells('C'.$numFila.':C'.($numFila+$cantFilas-1));
-                $objPHPExcel->getActiveSheet()->mergeCells('D'.$numFila.':D'.($numFila+$cantFilas-1));
-                $objPHPExcel->getActiveSheet()->mergeCells('E'.$numFila.':E'.($numFila+$cantFilas-1));
-                $objPHPExcel->getActiveSheet()->mergeCells('F'.$numFila.':F'.($numFila+$cantFilas-1));
+                $objPHPExcel->getActiveSheet()->mergeCells('A' . $numFila . ':A' . ($numFila + $cantFilas - 1));
+                $objPHPExcel->getActiveSheet()->mergeCells('B' . $numFila . ':B' . ($numFila + $cantFilas - 1));
+                $objPHPExcel->getActiveSheet()->mergeCells('C' . $numFila . ':C' . ($numFila + $cantFilas - 1));
+                $objPHPExcel->getActiveSheet()->mergeCells('D' . $numFila . ':D' . ($numFila + $cantFilas - 1));
+                $objPHPExcel->getActiveSheet()->mergeCells('E' . $numFila . ':E' . ($numFila + $cantFilas - 1));
+                $objPHPExcel->getActiveSheet()->mergeCells('F' . $numFila . ':F' . ($numFila + $cantFilas - 1));
             }
             unset($row['vaca_estado']);
             $objPHPExcel->getActiveSheet()->fromArray((array)$row, null, "A" . $numFila);
-            $f=$f+$cantFilas;
+            $f = $f + $cantFilas;
         }
 
-        $f=7;
+        $f = 7;
         foreach ($programados as $key => $value) {
             foreach ($noPrintFec as $col) {
                 unset($value[$col]);
             }
-            
+
             foreach ($value['vaca_estado'] as $key => $ff) {
                 $numFila = $f + 3;
                 $fechas['anio1_1'] = $value['anio1_1'][$key]['fechas'];
-                if ($fechas['anio1_1']!='') {
+                if ($fechas['anio1_1'] != '') {
                     $color['anio1_1']  = substr($value['anio1_1'][$key]['color'], 1);
-                    $objPHPExcel->getActiveSheet()->getStyle('H'.$numFila.':H'.$numFila)->getFont()->getColor()->setRGB('FFFFFF');
-                    $objPHPExcel->getActiveSheet()->getStyle('H'.$numFila.':H'.$numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
-                    $objPHPExcel->getActiveSheet()->getStyle('H'.$numFila.':H'.$numFila)->getFill()->getStartColor()->setRGB($color['anio1_1']);
+                    $objPHPExcel->getActiveSheet()->getStyle('H' . $numFila . ':H' . $numFila)->getFont()->getColor()->setRGB('FFFFFF');
+                    $objPHPExcel->getActiveSheet()->getStyle('H' . $numFila . ':H' . $numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
+                    $objPHPExcel->getActiveSheet()->getStyle('H' . $numFila . ':H' . $numFila)->getFill()->getStartColor()->setRGB($color['anio1_1']);
                 }
                 $fechas['anio1_2'] = $value['anio1_2'][$key]['fechas'];
-                if ($fechas['anio1_2']!='') {
+                if ($fechas['anio1_2'] != '') {
                     $color['anio1_2']  = substr($value['anio1_2'][$key]['color'], 1);
-                    $objPHPExcel->getActiveSheet()->getStyle('I'.$numFila.':I'.$numFila)->getFont()->getColor()->setRGB('FFFFFF');
-                    $objPHPExcel->getActiveSheet()->getStyle('I'.$numFila.':I'.$numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
-                    $objPHPExcel->getActiveSheet()->getStyle('I'.$numFila.':I'.$numFila)->getFill()->getStartColor()->setRGB($color['anio1_2']);
+                    $objPHPExcel->getActiveSheet()->getStyle('I' . $numFila . ':I' . $numFila)->getFont()->getColor()->setRGB('FFFFFF');
+                    $objPHPExcel->getActiveSheet()->getStyle('I' . $numFila . ':I' . $numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
+                    $objPHPExcel->getActiveSheet()->getStyle('I' . $numFila . ':I' . $numFila)->getFill()->getStartColor()->setRGB($color['anio1_2']);
                 }
                 $fechas['anio1_3'] = $value['anio1_3'][$key]['fechas'];
-                if ($fechas['anio1_3']!='') {
+                if ($fechas['anio1_3'] != '') {
                     $color['anio1_3']  = substr($value['anio1_3'][$key]['color'], 1);
-                    $objPHPExcel->getActiveSheet()->getStyle('J'.$numFila.':J'.$numFila)->getFont()->getColor()->setRGB('FFFFFF');
-                    $objPHPExcel->getActiveSheet()->getStyle('J'.$numFila.':J'.$numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
-                    $objPHPExcel->getActiveSheet()->getStyle('J'.$numFila.':J'.$numFila)->getFill()->getStartColor()->setRGB($color['anio1_3']);
+                    $objPHPExcel->getActiveSheet()->getStyle('J' . $numFila . ':J' . $numFila)->getFont()->getColor()->setRGB('FFFFFF');
+                    $objPHPExcel->getActiveSheet()->getStyle('J' . $numFila . ':J' . $numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
+                    $objPHPExcel->getActiveSheet()->getStyle('J' . $numFila . ':J' . $numFila)->getFill()->getStartColor()->setRGB($color['anio1_3']);
                 }
                 $fechas['anio1_4'] = $value['anio1_4'][$key]['fechas'];
-                if ($fechas['anio1_4']!='') {
+                if ($fechas['anio1_4'] != '') {
                     $color['anio1_4']  = substr($value['anio1_4'][$key]['color'], 1);
-                    $objPHPExcel->getActiveSheet()->getStyle('K'.$numFila.':K'.$numFila)->getFont()->getColor()->setRGB('FFFFFF');
-                    $objPHPExcel->getActiveSheet()->getStyle('K'.$numFila.':K'.$numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
-                    $objPHPExcel->getActiveSheet()->getStyle('K'.$numFila.':K'.$numFila)->getFill()->getStartColor()->setRGB($color['anio1_4']);
+                    $objPHPExcel->getActiveSheet()->getStyle('K' . $numFila . ':K' . $numFila)->getFont()->getColor()->setRGB('FFFFFF');
+                    $objPHPExcel->getActiveSheet()->getStyle('K' . $numFila . ':K' . $numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
+                    $objPHPExcel->getActiveSheet()->getStyle('K' . $numFila . ':K' . $numFila)->getFill()->getStartColor()->setRGB($color['anio1_4']);
                 }
                 $fechas['anio1_5'] = $value['anio1_5'][$key]['fechas'];
-                if ($fechas['anio1_5']!='') {
+                if ($fechas['anio1_5'] != '') {
                     $color['anio1_5']  = substr($value['anio1_5'][$key]['color'], 1);
-                    $objPHPExcel->getActiveSheet()->getStyle('L'.$numFila.':L'.$numFila)->getFont()->getColor()->setRGB('FFFFFF');
-                    $objPHPExcel->getActiveSheet()->getStyle('L'.$numFila.':L'.$numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
-                    $objPHPExcel->getActiveSheet()->getStyle('L'.$numFila.':L'.$numFila)->getFill()->getStartColor()->setRGB($color['anio1_5']);
+                    $objPHPExcel->getActiveSheet()->getStyle('L' . $numFila . ':L' . $numFila)->getFont()->getColor()->setRGB('FFFFFF');
+                    $objPHPExcel->getActiveSheet()->getStyle('L' . $numFila . ':L' . $numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
+                    $objPHPExcel->getActiveSheet()->getStyle('L' . $numFila . ':L' . $numFila)->getFill()->getStartColor()->setRGB($color['anio1_5']);
                 }
                 $fechas['anio1_6'] = $value['anio1_6'][$key]['fechas'];
-                if ($fechas['anio1_6']!='') {
+                if ($fechas['anio1_6'] != '') {
                     $color['anio1_6']  = substr($value['anio1_6'][$key]['color'], 1);
-                    $objPHPExcel->getActiveSheet()->getStyle('M'.$numFila.':M'.$numFila)->getFont()->getColor()->setRGB('FFFFFF');
-                    $objPHPExcel->getActiveSheet()->getStyle('M'.$numFila.':M'.$numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
-                    $objPHPExcel->getActiveSheet()->getStyle('M'.$numFila.':M'.$numFila)->getFill()->getStartColor()->setRGB($color['anio1_6']);
+                    $objPHPExcel->getActiveSheet()->getStyle('M' . $numFila . ':M' . $numFila)->getFont()->getColor()->setRGB('FFFFFF');
+                    $objPHPExcel->getActiveSheet()->getStyle('M' . $numFila . ':M' . $numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
+                    $objPHPExcel->getActiveSheet()->getStyle('M' . $numFila . ':M' . $numFila)->getFill()->getStartColor()->setRGB($color['anio1_6']);
                 }
                 $fechas['anio1_7'] = $value['anio1_7'][$key]['fechas'];
-                if ($fechas['anio1_7']!='') {
+                if ($fechas['anio1_7'] != '') {
                     $color['anio1_7']  = substr($value['anio1_7'][$key]['color'], 1);
-                    $objPHPExcel->getActiveSheet()->getStyle('N'.$numFila.':N'.$numFila)->getFont()->getColor()->setRGB('FFFFFF');
-                    $objPHPExcel->getActiveSheet()->getStyle('N'.$numFila.':N'.$numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
-                    $objPHPExcel->getActiveSheet()->getStyle('N'.$numFila.':N'.$numFila)->getFill()->getStartColor()->setRGB($color['anio1_7']);
+                    $objPHPExcel->getActiveSheet()->getStyle('N' . $numFila . ':N' . $numFila)->getFont()->getColor()->setRGB('FFFFFF');
+                    $objPHPExcel->getActiveSheet()->getStyle('N' . $numFila . ':N' . $numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
+                    $objPHPExcel->getActiveSheet()->getStyle('N' . $numFila . ':N' . $numFila)->getFill()->getStartColor()->setRGB($color['anio1_7']);
                 }
                 $fechas['anio1_8'] = $value['anio1_8'][$key]['fechas'];
-                if ($fechas['anio1_8']!='') {
+                if ($fechas['anio1_8'] != '') {
                     $color['anio1_8']  = substr($value['anio1_8'][$key]['color'], 1);
-                    $objPHPExcel->getActiveSheet()->getStyle('O'.$numFila.':O'.$numFila)->getFont()->getColor()->setRGB('FFFFFF');
-                    $objPHPExcel->getActiveSheet()->getStyle('O'.$numFila.':O'.$numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
-                    $objPHPExcel->getActiveSheet()->getStyle('O'.$numFila.':O'.$numFila)->getFill()->getStartColor()->setRGB($color['anio1_8']);
+                    $objPHPExcel->getActiveSheet()->getStyle('O' . $numFila . ':O' . $numFila)->getFont()->getColor()->setRGB('FFFFFF');
+                    $objPHPExcel->getActiveSheet()->getStyle('O' . $numFila . ':O' . $numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
+                    $objPHPExcel->getActiveSheet()->getStyle('O' . $numFila . ':O' . $numFila)->getFill()->getStartColor()->setRGB($color['anio1_8']);
                 }
                 $fechas['anio1_9'] = $value['anio1_9'][$key]['fechas'];
-                if ($fechas['anio1_9']!='') {
+                if ($fechas['anio1_9'] != '') {
                     $color['anio1_9']  = substr($value['anio1_9'][$key]['color'], 1);
-                    $objPHPExcel->getActiveSheet()->getStyle('P'.$numFila.':P'.$numFila)->getFont()->getColor()->setRGB('FFFFFF');
-                    $objPHPExcel->getActiveSheet()->getStyle('P'.$numFila.':P'.$numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
-                    $objPHPExcel->getActiveSheet()->getStyle('P'.$numFila.':P'.$numFila)->getFill()->getStartColor()->setRGB($color['anio1_9']);
+                    $objPHPExcel->getActiveSheet()->getStyle('P' . $numFila . ':P' . $numFila)->getFont()->getColor()->setRGB('FFFFFF');
+                    $objPHPExcel->getActiveSheet()->getStyle('P' . $numFila . ':P' . $numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
+                    $objPHPExcel->getActiveSheet()->getStyle('P' . $numFila . ':P' . $numFila)->getFill()->getStartColor()->setRGB($color['anio1_9']);
                 }
                 $fechas['anio1_10'] = $value['anio1_10'][$key]['fechas'];
-                if ($fechas['anio1_10']!='') {
+                if ($fechas['anio1_10'] != '') {
                     $color['anio1_10']  = substr($value['anio1_10'][$key]['color'], 1);
-                    $objPHPExcel->getActiveSheet()->getStyle('Q'.$numFila.':Q'.$numFila)->getFont()->getColor()->setRGB('FFFFFF');
-                    $objPHPExcel->getActiveSheet()->getStyle('Q'.$numFila.':Q'.$numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
-                    $objPHPExcel->getActiveSheet()->getStyle('Q'.$numFila.':Q'.$numFila)->getFill()->getStartColor()->setRGB($color['anio1_10']);
+                    $objPHPExcel->getActiveSheet()->getStyle('Q' . $numFila . ':Q' . $numFila)->getFont()->getColor()->setRGB('FFFFFF');
+                    $objPHPExcel->getActiveSheet()->getStyle('Q' . $numFila . ':Q' . $numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
+                    $objPHPExcel->getActiveSheet()->getStyle('Q' . $numFila . ':Q' . $numFila)->getFill()->getStartColor()->setRGB($color['anio1_10']);
                 }
                 $fechas['anio1_11'] = $value['anio1_11'][$key]['fechas'];
-                if ($fechas['anio1_11']!='') {
+                if ($fechas['anio1_11'] != '') {
                     $color['anio1_11']  = substr($value['anio1_11'][$key]['color'], 1);
-                    $objPHPExcel->getActiveSheet()->getStyle('R'.$numFila.':R'.$numFila)->getFont()->getColor()->setRGB('FFFFFF');
-                    $objPHPExcel->getActiveSheet()->getStyle('R'.$numFila.':R'.$numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
-                    $objPHPExcel->getActiveSheet()->getStyle('R'.$numFila.':R'.$numFila)->getFill()->getStartColor()->setRGB($color['anio1_11']);
+                    $objPHPExcel->getActiveSheet()->getStyle('R' . $numFila . ':R' . $numFila)->getFont()->getColor()->setRGB('FFFFFF');
+                    $objPHPExcel->getActiveSheet()->getStyle('R' . $numFila . ':R' . $numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
+                    $objPHPExcel->getActiveSheet()->getStyle('R' . $numFila . ':R' . $numFila)->getFill()->getStartColor()->setRGB($color['anio1_11']);
                 }
                 $fechas['anio1_12'] = $value['anio1_12'][$key]['fechas'];
-                if ($fechas['anio1_12']!='') {
+                if ($fechas['anio1_12'] != '') {
                     $color['anio1_12']  = substr($value['anio1_12'][$key]['color'], 1);
-                    $objPHPExcel->getActiveSheet()->getStyle('S'.$numFila.':S'.$numFila)->getFont()->getColor()->setRGB('FFFFFF');
-                    $objPHPExcel->getActiveSheet()->getStyle('S'.$numFila.':S'.$numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
-                    $objPHPExcel->getActiveSheet()->getStyle('S'.$numFila.':S'.$numFila)->getFill()->getStartColor()->setRGB($color['anio1_12']);
+                    $objPHPExcel->getActiveSheet()->getStyle('S' . $numFila . ':S' . $numFila)->getFont()->getColor()->setRGB('FFFFFF');
+                    $objPHPExcel->getActiveSheet()->getStyle('S' . $numFila . ':S' . $numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
+                    $objPHPExcel->getActiveSheet()->getStyle('S' . $numFila . ':S' . $numFila)->getFill()->getStartColor()->setRGB($color['anio1_12']);
                 }
                 $fechas['anio2_1'] = $value['anio2_1'][$key]['fechas'];
-                if ($fechas['anio2_1']!='') {
+                if ($fechas['anio2_1'] != '') {
                     $color['anio2_1']  = substr($value['anio2_1'][$key]['color'], 1);
-                    $objPHPExcel->getActiveSheet()->getStyle('T'.$numFila.':T'.$numFila)->getFont()->getColor()->setRGB('FFFFFF');
-                    $objPHPExcel->getActiveSheet()->getStyle('T'.$numFila.':T'.$numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
-                    $objPHPExcel->getActiveSheet()->getStyle('T'.$numFila.':T'.$numFila)->getFill()->getStartColor()->setRGB($color['anio2_1']);
+                    $objPHPExcel->getActiveSheet()->getStyle('T' . $numFila . ':T' . $numFila)->getFont()->getColor()->setRGB('FFFFFF');
+                    $objPHPExcel->getActiveSheet()->getStyle('T' . $numFila . ':T' . $numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
+                    $objPHPExcel->getActiveSheet()->getStyle('T' . $numFila . ':T' . $numFila)->getFill()->getStartColor()->setRGB($color['anio2_1']);
                 }
                 $fechas['anio2_2'] = $value['anio2_2'][$key]['fechas'];
-                if ($fechas['anio2_2']!='') {
+                if ($fechas['anio2_2'] != '') {
                     $color['anio2_2']  = substr($value['anio2_2'][$key]['color'], 1);
-                    $objPHPExcel->getActiveSheet()->getStyle('U'.$numFila.':U'.$numFila)->getFont()->getColor()->setRGB('FFFFFF');
-                    $objPHPExcel->getActiveSheet()->getStyle('U'.$numFila.':U'.$numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
-                    $objPHPExcel->getActiveSheet()->getStyle('U'.$numFila.':U'.$numFila)->getFill()->getStartColor()->setRGB($color['anio2_2']);
+                    $objPHPExcel->getActiveSheet()->getStyle('U' . $numFila . ':U' . $numFila)->getFont()->getColor()->setRGB('FFFFFF');
+                    $objPHPExcel->getActiveSheet()->getStyle('U' . $numFila . ':U' . $numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
+                    $objPHPExcel->getActiveSheet()->getStyle('U' . $numFila . ':U' . $numFila)->getFill()->getStartColor()->setRGB($color['anio2_2']);
                 }
                 $fechas['anio2_3'] = $value['anio2_3'][$key]['fechas'];
-                if ($fechas['anio2_3']!='') {
+                if ($fechas['anio2_3'] != '') {
                     $color['anio2_3']  = substr($value['anio2_3'][$key]['color'], 1);
-                    $objPHPExcel->getActiveSheet()->getStyle('V'.$numFila.':V'.$numFila)->getFont()->getColor()->setRGB('FFFFFF');
-                    $objPHPExcel->getActiveSheet()->getStyle('V'.$numFila.':V'.$numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
-                    $objPHPExcel->getActiveSheet()->getStyle('V'.$numFila.':V'.$numFila)->getFill()->getStartColor()->setRGB($color['anio2_3']);
+                    $objPHPExcel->getActiveSheet()->getStyle('V' . $numFila . ':V' . $numFila)->getFont()->getColor()->setRGB('FFFFFF');
+                    $objPHPExcel->getActiveSheet()->getStyle('V' . $numFila . ':V' . $numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
+                    $objPHPExcel->getActiveSheet()->getStyle('V' . $numFila . ':V' . $numFila)->getFill()->getStartColor()->setRGB($color['anio2_3']);
                 }
                 $fechas['anio2_4'] = $value['anio2_4'][$key]['fechas'];
-                if ($fechas['anio2_4']!='') {
+                if ($fechas['anio2_4'] != '') {
                     $color['anio2_4']  = substr($value['anio2_4'][$key]['color'], 1);
-                    $objPHPExcel->getActiveSheet()->getStyle('W'.$numFila.':W'.$numFila)->getFont()->getColor()->setRGB('FFFFFF');
-                    $objPHPExcel->getActiveSheet()->getStyle('W'.$numFila.':W'.$numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
-                    $objPHPExcel->getActiveSheet()->getStyle('W'.$numFila.':W'.$numFila)->getFill()->getStartColor()->setRGB($color['anio2_4']);
+                    $objPHPExcel->getActiveSheet()->getStyle('W' . $numFila . ':W' . $numFila)->getFont()->getColor()->setRGB('FFFFFF');
+                    $objPHPExcel->getActiveSheet()->getStyle('W' . $numFila . ':W' . $numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
+                    $objPHPExcel->getActiveSheet()->getStyle('W' . $numFila . ':W' . $numFila)->getFill()->getStartColor()->setRGB($color['anio2_4']);
                 }
                 $fechas['anio2_5'] = $value['anio2_5'][$key]['fechas'];
-                if ($fechas['anio2_5']!='') {
+                if ($fechas['anio2_5'] != '') {
                     $color['anio2_5']  = substr($value['anio2_5'][$key]['color'], 1);
-                    $objPHPExcel->getActiveSheet()->getStyle('X'.$numFila.':X'.$numFila)->getFont()->getColor()->setRGB('FFFFFF');
-                    $objPHPExcel->getActiveSheet()->getStyle('X'.$numFila.':X'.$numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
-                    $objPHPExcel->getActiveSheet()->getStyle('X'.$numFila.':X'.$numFila)->getFill()->getStartColor()->setRGB($color['anio2_5']);
+                    $objPHPExcel->getActiveSheet()->getStyle('X' . $numFila . ':X' . $numFila)->getFont()->getColor()->setRGB('FFFFFF');
+                    $objPHPExcel->getActiveSheet()->getStyle('X' . $numFila . ':X' . $numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
+                    $objPHPExcel->getActiveSheet()->getStyle('X' . $numFila . ':X' . $numFila)->getFill()->getStartColor()->setRGB($color['anio2_5']);
                 }
                 $fechas['anio2_6'] = $value['anio2_6'][$key]['fechas'];
-                if ($fechas['anio2_6']!='') {
+                if ($fechas['anio2_6'] != '') {
                     $color['anio2_6']  = substr($value['anio2_6'][$key]['color'], 1);
-                    $objPHPExcel->getActiveSheet()->getStyle('Y'.$numFila.':Y'.$numFila)->getFont()->getColor()->setRGB('FFFFFF');
-                    $objPHPExcel->getActiveSheet()->getStyle('Y'.$numFila.':Y'.$numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
-                    $objPHPExcel->getActiveSheet()->getStyle('Y'.$numFila.':Y'.$numFila)->getFill()->getStartColor()->setRGB($color['anio2_6']);
+                    $objPHPExcel->getActiveSheet()->getStyle('Y' . $numFila . ':Y' . $numFila)->getFont()->getColor()->setRGB('FFFFFF');
+                    $objPHPExcel->getActiveSheet()->getStyle('Y' . $numFila . ':Y' . $numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
+                    $objPHPExcel->getActiveSheet()->getStyle('Y' . $numFila . ':Y' . $numFila)->getFill()->getStartColor()->setRGB($color['anio2_6']);
                 }
                 $fechas['anio2_7'] = $value['anio2_7'][$key]['fechas'];
-                if ($fechas['anio2_7']!='') {
+                if ($fechas['anio2_7'] != '') {
                     $color['anio2_7']  = substr($value['anio2_7'][$key]['color'], 1);
-                    $objPHPExcel->getActiveSheet()->getStyle('Z'.$numFila.':Z'.$numFila)->getFont()->getColor()->setRGB('FFFFFF');
-                    $objPHPExcel->getActiveSheet()->getStyle('Z'.$numFila.':Z'.$numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
-                    $objPHPExcel->getActiveSheet()->getStyle('Z'.$numFila.':Z'.$numFila)->getFill()->getStartColor()->setRGB($color['anio2_7']);
+                    $objPHPExcel->getActiveSheet()->getStyle('Z' . $numFila . ':Z' . $numFila)->getFont()->getColor()->setRGB('FFFFFF');
+                    $objPHPExcel->getActiveSheet()->getStyle('Z' . $numFila . ':Z' . $numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
+                    $objPHPExcel->getActiveSheet()->getStyle('Z' . $numFila . ':Z' . $numFila)->getFill()->getStartColor()->setRGB($color['anio2_7']);
                 }
                 $fechas['anio2_8'] = $value['anio2_8'][$key]['fechas'];
-                if ($fechas['anio2_8']!='') {
+                if ($fechas['anio2_8'] != '') {
                     $color['anio2_8']  = substr($value['anio2_8'][$key]['color'], 1);
-                    $objPHPExcel->getActiveSheet()->getStyle('AA'.$numFila.':AA'.$numFila)->getFont()->getColor()->setRGB('FFFFFF');
-                    $objPHPExcel->getActiveSheet()->getStyle('AA'.$numFila.':AA'.$numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
-                    $objPHPExcel->getActiveSheet()->getStyle('AA'.$numFila.':AA'.$numFila)->getFill()->getStartColor()->setRGB($color['anio2_8']);
+                    $objPHPExcel->getActiveSheet()->getStyle('AA' . $numFila . ':AA' . $numFila)->getFont()->getColor()->setRGB('FFFFFF');
+                    $objPHPExcel->getActiveSheet()->getStyle('AA' . $numFila . ':AA' . $numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
+                    $objPHPExcel->getActiveSheet()->getStyle('AA' . $numFila . ':AA' . $numFila)->getFill()->getStartColor()->setRGB($color['anio2_8']);
                 }
                 $fechas['anio2_9'] = $value['anio2_9'][$key]['fechas'];
-                if ($fechas['anio2_9']!='') {
+                if ($fechas['anio2_9'] != '') {
                     $color['anio2_9']  = substr($value['anio2_9'][$key]['color'], 1);
-                    $objPHPExcel->getActiveSheet()->getStyle('AB'.$numFila.':AB'.$numFila)->getFont()->getColor()->setRGB('FFFFFF');
-                    $objPHPExcel->getActiveSheet()->getStyle('AB'.$numFila.':AB'.$numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
-                    $objPHPExcel->getActiveSheet()->getStyle('AB'.$numFila.':AB'.$numFila)->getFill()->getStartColor()->setRGB($color['anio2_9']);
+                    $objPHPExcel->getActiveSheet()->getStyle('AB' . $numFila . ':AB' . $numFila)->getFont()->getColor()->setRGB('FFFFFF');
+                    $objPHPExcel->getActiveSheet()->getStyle('AB' . $numFila . ':AB' . $numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
+                    $objPHPExcel->getActiveSheet()->getStyle('AB' . $numFila . ':AB' . $numFila)->getFill()->getStartColor()->setRGB($color['anio2_9']);
                 }
                 $fechas['anio2_10'] = $value['anio2_10'][$key]['fechas'];
-                if ($fechas['anio2_10']!='') {
+                if ($fechas['anio2_10'] != '') {
                     $color['anio2_10']  = substr($value['anio2_10'][$key]['color'], 1);
-                    $objPHPExcel->getActiveSheet()->getStyle('AC'.$numFila.':AC'.$numFila)->getFont()->getColor()->setRGB('FFFFFF');
-                    $objPHPExcel->getActiveSheet()->getStyle('AC'.$numFila.':AC'.$numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
-                    $objPHPExcel->getActiveSheet()->getStyle('AC'.$numFila.':AC'.$numFila)->getFill()->getStartColor()->setRGB($color['anio2_10']);
+                    $objPHPExcel->getActiveSheet()->getStyle('AC' . $numFila . ':AC' . $numFila)->getFont()->getColor()->setRGB('FFFFFF');
+                    $objPHPExcel->getActiveSheet()->getStyle('AC' . $numFila . ':AC' . $numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
+                    $objPHPExcel->getActiveSheet()->getStyle('AC' . $numFila . ':AC' . $numFila)->getFill()->getStartColor()->setRGB($color['anio2_10']);
                 }
                 $fechas['anio2_11'] = $value['anio2_11'][$key]['fechas'];
-                if ($fechas['anio2_11']!='') {
+                if ($fechas['anio2_11'] != '') {
                     $color['anio2_11']  = substr($value['anio2_11'][$key]['color'], 1);
-                    $objPHPExcel->getActiveSheet()->getStyle('AD'.$numFila.':AD'.$numFila)->getFont()->getColor()->setRGB('FFFFFF');
-                    $objPHPExcel->getActiveSheet()->getStyle('AD'.$numFila.':AD'.$numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
-                    $objPHPExcel->getActiveSheet()->getStyle('AD'.$numFila.':AD'.$numFila)->getFill()->getStartColor()->setRGB($color['anio2_11']);
+                    $objPHPExcel->getActiveSheet()->getStyle('AD' . $numFila . ':AD' . $numFila)->getFont()->getColor()->setRGB('FFFFFF');
+                    $objPHPExcel->getActiveSheet()->getStyle('AD' . $numFila . ':AD' . $numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
+                    $objPHPExcel->getActiveSheet()->getStyle('AD' . $numFila . ':AD' . $numFila)->getFill()->getStartColor()->setRGB($color['anio2_11']);
                 }
                 $fechas['anio2_12'] = $value['anio2_12'][$key]['fechas'];
-                if ($fechas['anio2_12']!='') {
+                if ($fechas['anio2_12'] != '') {
                     $color['anio2_12']  = substr($value['anio2_12'][$key]['color'], 1);
-                    $objPHPExcel->getActiveSheet()->getStyle('AE'.$numFila.':AE'.$numFila)->getFont()->getColor()->setRGB('FFFFFF');
-                    $objPHPExcel->getActiveSheet()->getStyle('AE'.$numFila.':AE'.$numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
-                    $objPHPExcel->getActiveSheet()->getStyle('AE'.$numFila.':AE'.$numFila)->getFill()->getStartColor()->setRGB($color['anio2_12']);
+                    $objPHPExcel->getActiveSheet()->getStyle('AE' . $numFila . ':AE' . $numFila)->getFont()->getColor()->setRGB('FFFFFF');
+                    $objPHPExcel->getActiveSheet()->getStyle('AE' . $numFila . ':AE' . $numFila)->getFill()->setFillType(PHPExcel_Style_Fill::FILL_SOLID);
+                    $objPHPExcel->getActiveSheet()->getStyle('AE' . $numFila . ':AE' . $numFila)->getFill()->getStartColor()->setRGB($color['anio2_12']);
                 }
                 $objPHPExcel->getActiveSheet()->fromArray((array)$fechas, null, "H" . $numFila);
                 $f++;
             }
         }
 
-            // exit;
+        // exit;
         //Pintamos los bordes del cuerpo
-        $objPHPExcel->getActiveSheet()->getStyle('A'.($ini+2) .':AE' . ($lastRow+2))->getBorders()->getAllBorders()->setBorderStyle(PHPExcel_Style_Border::BORDER_THIN);
+        $objPHPExcel->getActiveSheet()->getStyle('A' . ($ini + 2) . ':AE' . ($lastRow + 2))->getBorders()->getAllBorders()->setBorderStyle(PHPExcel_Style_Border::BORDER_THIN);
         //************************************************* FINAL DE INFORME ****************************************************************
 
         // Set autoZise Columns
@@ -1634,7 +2010,8 @@ class VacacionController extends ControllerBase {
         $objWriter->save('php://output');
     }
 
-    private function _cellColor($cells,$color){
+    private function _cellColor($cells, $color)
+    {
         global $objPHPExcel;
         $objPHPExcel->getStyle($cells)->applyFromArray(
             array(
@@ -1652,13 +2029,14 @@ class VacacionController extends ControllerBase {
         // ));
     }
 
-    private function _armandoArrayEstados($regProgramados){
+    private function _armandoArrayEstados($regProgramados)
+    {
         $colaboradores = array();
         $list = array();
         $i = -1;
         foreach ($regProgramados as $key => $value) {
             if (!in_array($value->dni, $list)) {
-                $b=0;
+                $b = 0;
                 $i++;
                 $list['dni']        = $value->dni;
                 $colaboradores[$i]['empresa']   = $value->empresa;
@@ -1668,7 +2046,7 @@ class VacacionController extends ControllerBase {
                 $colaboradores[$i]['seccion']   = $value->seccion;
                 $colaboradores[$i]['dni']       = $value->dni;
                 $colaboradores[$i]['solicitante']   = $value->solicitante;
-                
+
                 $colaboradores[$i]['vaca_estado'][$b]   = $value->vaca_estado;
                 // $colaboradores[$i]['demo'][$b]   = $value;
                 $colaboradores[$i]['anio1_1'][$b]['estado'] = $value->vaca_estado;
@@ -1744,7 +2122,7 @@ class VacacionController extends ControllerBase {
                 $colaboradores[$i]['anio2_12'][$b]['fechas'] = $value->anio2_12;
                 $colaboradores[$i]['anio2_12'][$b]['color'] = $value->color;
                 $b++;
-            }else{
+            } else {
                 $colaboradores[$i]['vaca_estado'][$b]   = $value->vaca_estado;
                 // $colaboradores[$i]['demo'][$b]   = $value;
                 $colaboradores[$i]['anio1_1'][$b]['estado'] = $value->vaca_estado;
@@ -1825,9 +2203,51 @@ class VacacionController extends ControllerBase {
         return $colaboradores;
     }
 
-    public function sincronizarEstados(){
+    public function sincronizarEstados()
+    {
         require $this->getDefaultModelName();
         $vacacionModelObj = new VacacionModel();
         $vacacionModelObj->procesarSincronizacion();
+    }
+
+    /**
+     * Verifica si entre las fechas de inicio y fin se incluye al menos un fin de semana completo (sábado y domingo)
+     * 
+     * @param string $fechaInicio Fecha de inicio en formato Y-m-d
+     * @param string $fechaFin Fecha de fin en formato Y-m-d
+     * @return boolean True si incluye al menos un sábado y un domingo, False en caso contrario
+     */
+    private function _verificarInclucionFinDeSemana($fechaInicio, $fechaFin)
+    {
+        $tieneSabado = false;
+        $tieneDomingo = false;
+
+        // Convertir las fechas a objetos DateTime
+        $inicio = new DateTime($fechaInicio);
+        $fin = new DateTime($fechaFin);
+        $fin->modify('+1 day'); // Incluir el día final en el conteo
+
+        // Intervalo de 1 día para iterar
+        $intervalo = new DateInterval('P1D');
+        $periodo = new DatePeriod($inicio, $intervalo, $fin);
+
+        // Recorrer cada día en el periodo
+        foreach ($periodo as $fecha) {
+            $diaSemana = $fecha->format('w');
+
+            if ($diaSemana == 6) { // Sábado
+                $tieneSabado = true;
+            } elseif ($diaSemana == 0) { // Domingo
+                $tieneDomingo = true;
+            }
+
+            // Si ya encontramos ambos días, no necesitamos seguir verificando
+            if ($tieneSabado && $tieneDomingo) {
+                return true;
+            }
+        }
+
+        // Verificar si encontramos tanto sábado como domingo
+        return ($tieneSabado && $tieneDomingo);
     }
 }

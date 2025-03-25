@@ -5,6 +5,7 @@ var $ajaxArea;
 var tblConsolidado;
 var tbldetalleconsolidado;
 var generador = false;
+var tipocondicion = 0;
 
 /*var localeDate = {
     "separator": " - ",
@@ -598,6 +599,14 @@ function setFunctionFormulario(editar,fechaInicio,fechaFin){
     $('#divFechaFin').on("dp.change", function (e) {
         $('#divFechaInicio').data("DateTimePicker").maxDate(e.date);
     });
+
+    $('#cboCondicion').change(function(){
+        if($('#cboSolicitante').val() && $("#txtFechaInicio").val() && $("#txtFechaFin").val()){
+            var inicio = moment($("#txtFechaInicio").val(),'DD/MM/YYYY');
+            var fin = moment($("#txtFechaFin").val(),'DD/MM/YYYY');
+            validarTiempo(inicio, fin);
+        }
+    });
     
     /*if(editar){
         var start = moment(fechaInicio.date);
@@ -768,12 +777,12 @@ function setFunctionFormulario(editar,fechaInicio,fechaFin){
             }
         },
         columns: [
-            { data: "PE_VACA", title : "Periodo"},
-            { data: "GANADAS", title : "GANADAS"},
+            { data: "PE_VACA", title : "PERIODO"},
+            { data: "GANADAS", title : "PENDIENTES"},
             { data: "GOZADAS", title : "GOZADAS"},
             { data: 'TRUNCAS', title: 'TRUNCAS'},
-            { data: "SALDO", title : "Por SALDO"},
-            { data:"ESTADO", title: "Estado"}
+            { data: "SALDO", title : "SALDO"},
+            { data:"ESTADO", title: "ESTADO"}
         ]
     });
 
@@ -958,12 +967,13 @@ function cambiarFechas(uso_vacaciones){
     if(status == 'false'){
         return false;
     }
-
+    data = { fechaInicio: start.format('YYYY-MM-DD'), fechaFin: end.format('YYYY-MM-DD'), idCondicion:$('#cboCondicion').val() , idSolicitante: $('#cboSolicitante').val() };
     loading(true,'Validando fechas');
-    $.post($getAppName+'/validarFechas/', { fechaInicio: start.format('YYYY-MM-DD'), fechaFin: end.format('YYYY-MM-DD') }, function(data) {
+    $.post($getAppName+'/validarFechas/', data, function(data) {
         loading(false);
         if (data.Result === 'OK') {
             validarTiempo(start,end);
+            $('idvacacionespecial').val(data.idFechaEspecial);
         } else {
             showConfirmWarning(data.Message);
         }
@@ -994,33 +1004,55 @@ function loading(mostrar,mensaje){
     }
 }
 
-function validarTiempo(fechaInicio,fechaFin){
+// validar
+function validarTiempo(fechaInicio, fechaFin) {
     var condicion = $('#cboCondicion').val();
-    var numDias = fechaFin.diff(fechaInicio,'days') + 1;
+    var numDias = fechaFin.diff(fechaInicio, 'days') + 1;
     var regConsolidado = tblConsolidado.row(0).data();
     var disponible = 0;
 
     $('#txtCantidadDias').val(numDias);
 
-    if(regConsolidado){
-        if(condicion == '1'){
-            disponible = (regConsolidado.ganado + regConsolidado.vencido) - regConsolidado.programado; //uso vacaciones
-        }else{
-            disponible = regConsolidado.trunco - regConsolidado.programado; //uso a cuenta de vacaciones
+    if(!regConsolidado) return false;
+    
+    // Validar que no seleccione truncas si tiene vencidas o ganadas
+    if(condicion == '2') {
+        if(parseFloat(regConsolidado.vencido) > 0 || parseFloat(regConsolidado.ganado) > 0) {
+            showConfirmWarning('No puede seleccionar adelanto a cuenta de vacaciones truncas, si dispone de vacaciones vencidas o pendientes.');
+            return false;
         }
     }
-
-    if(numDias > disponible){
-        showConfirmWarning('No puede exceder los días que tiene ganado: '+disponible+' días');
-        return false;
+    
+    // Calcular disponibilidad según condición
+    if(condicion == '1') {
+        // Para condición 1, usar primero vencidas, luego ganadas
+        if(parseFloat(regConsolidado.vencido) > 0) {
+            disponible = parseFloat(regConsolidado.vencido) - parseFloat(regConsolidado.programado);
+            tipoVacacion = 'vencidas';
+        } else {
+            disponible = parseFloat(regConsolidado.ganado) - parseFloat(regConsolidado.programado);
+            tipoVacacion = 'pendientes';
+        }
+    } else if(condicion == '2') {
+        // Para condición 2, solo truncas
+        disponible = parseFloat(regConsolidado.trunco) - parseFloat(regConsolidado.programado);
+        tipoVacacion = 'truncas';
     }
+
+    if(condicion != '3'){
+        if(numDias > disponible) {
+            showConfirmWarning('Solo tienes disponible ' + disponible.toFixed(2) + ' días en el periodo de vacaciones ' + tipoVacacion + '. Por favor, ajusta la cantidad de días solicitados.');
+            return false;
+        }
+    }
+    
     return true;
 }
 
 function validarUsoDeVacaciones(usoDeVacaciones){
     var condicion = $('#cboCondicion').val();
     if(condicion == '2' && usoDeVacaciones > 0){
-        showConfirmWarning('Primero debe consumir sus vacaciones ganadas, antes de usar las vacaciones truncas');
+        showConfirmWarning('No puede seleccionar adelanto a cuenta de vacaciones truncas, si dispone de vacaciones vencidas o pendientes.');
         return false;
     }
 

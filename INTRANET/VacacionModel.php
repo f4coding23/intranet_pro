@@ -154,6 +154,8 @@ class VacacionModel extends ModelBase{
         }
 
         $qryResult = $this->intra_db->Listar();
+        // print_r($qryResult);
+        // die();
         return $qryResult;
     }
 
@@ -321,10 +323,11 @@ class VacacionModel extends ModelBase{
     }
 
     /******************************************* CREACION DE SOLICITUD DE VACACIONES *********************************************/
-    public function createVacacion($reg){
+    public function createVacacion($reg, $id_vacacion_especial){
+
         $resultado = array('status' => false, 'mensaje' => '');
         $tblConsolidado = (array) json_decode($reg['tblConsolidado']);
-
+        
         /*$distribucion = $this->_armarDistribucion($reg['cboSolicitante'],$tblConsolidado['trunco'],$reg['cboCondicion'],$reg['txtFechaInicio'],$reg['txtFechaFin']);
 
         if(!$distribucion['status']){
@@ -337,7 +340,7 @@ class VacacionModel extends ModelBase{
         $this->intra_trans->Conectar(true);
         $this->intra_trans->iniciarTransaccion();
 
-        $this->idVacacion = $this->_insertarSolicitudVacacion($reg,$reg['modalidad']);
+        $this->idVacacion = $this->_insertarSolicitudVacacion($reg,$reg['modalidad'], $id_vacacion_especial);
         //$this->_insertarDistribucion($this->idVacacion,$distribucion['resultado']);
 
         $this->intra_trans->commitTransaccion();
@@ -354,7 +357,8 @@ class VacacionModel extends ModelBase{
         return $resultado;
     }
 
-    private function _insertarSolicitudVacacion($reg,$modalidad = 1){
+    private function _insertarSolicitudVacacion($reg,$modalidad = 1, $id_vacacion_especial){
+
         $dateFormat = DateTime::createFromFormat('d/m/Y', $reg['txtFechaIngreso']);
         $fechaIngreso = $dateFormat ->format('Y-m-d');
 
@@ -393,28 +397,86 @@ class VacacionModel extends ModelBase{
         }
 
         $infoSucursal = $this->sessionObj->getInfoFromSucursalByEmpresa($userInfoOfisis[0]->CO_EMPR,1);
+        $periodoActual = $this->_obtenerPeriodo($userInfo[0]->ID_USUARIO);
+        $diasTipoActual = $this->_sumarDiasPorTipo($reg['txtFechaInicio'], $reg['txtFechaFin']);
+        $diasNoLaborables = $diasTipoActual['no_habil'];
+        $idVacacionEspecial = isset($id_vacacion_especial) ? $id_vacacion_especial : null;
+        $numSolicitud = $this->_obtenerNumeroSolicitud($userInfo[0]->ID_USUARIO, $periodoActual[0]->periodo);
+        $diasPrimerSubPeriodo = $this->_obtenerDiasConsumidosPeriodo($userInfo[0]->ID_USUARIO, $periodoActual[0]->periodo, 1);
+        $diasSegundoSubPeriodo = $this->_obtenerDiasConsumidosPeriodo($userInfo[0]->ID_USUARIO, $periodoActual[0]->periodo, 2);
+    
+        if ($idVacacionEspecial != null) {
+            $diasSubPeriodoUno = 0;
+            $diasSubPeriodoDos = $reg['txtCantidadDias'];
+        } else {
+            // Calcular cuántos días faltan en cada subperiodo
+            $diasDisponiblesSubPeriodoUno = max(15 - $diasPrimerSubPeriodo[0]->dias_consumidos, 0);
+            $diasDisponiblesSubPeriodoDos = max(15 - $diasSegundoSubPeriodo[0]->dias_consumidos, 0);
+        
+            if ($numSolicitud == 1) {
+                // Primera solicitud: asignar hasta 15 días al subperiodo 1, el resto al subperiodo 2
+                $diasSubPeriodoUno = min($reg['txtCantidadDias'], 15);
+                $diasSubPeriodoDos = max($reg['txtCantidadDias'] - $diasSubPeriodoUno, 0);
+            } elseif ($numSolicitud == 2) {
+                // Segunda solicitud: completar subperiodo 1 primero, luego subperiodo 2
+                $diasSubPeriodoUno = min($reg['txtCantidadDias'], $diasDisponiblesSubPeriodoUno);
+                $diasSubPeriodoDos = max($reg['txtCantidadDias'] - $diasSubPeriodoUno, 0);
+            } elseif ($numSolicitud == 3) {
+                // Tercera solicitud: asignar todo al subperiodo 2, hasta un máximo de 15 días
+                $diasSubPeriodoUno = 0;
+                $diasSubPeriodoDos = min($reg['txtCantidadDias'], $diasDisponiblesSubPeriodoDos);
+            }
+        }
+        
 
-        $sqlQuery = " INSERT INTO dbo.TBINT_VACACIONES(id_empresa, id_sucursal, id_unidad, id_departamento, id_area, id_seccion, id_solicitante, fecha_ingreso, id_generador, idTipo, id_vaca_condicion, id_vaca_estado, fecha_inicio, fecha_fin, num_dias, confirmado, eliminado, fecha_crea, usu_crea) 
-        VALUES (
-        '".$userInfoOfisis[0]->CO_EMPR."',
-        '".$infoSucursal[0]->SUCINIDSUCURSAL."',
-        '".$userInfoOfisis[0]->CO_UNID."',
-        '".$userInfoOfisis[0]->CO_DEPA."',
-        '".$userInfoOfisis[0]->CO_AREA."',
-        '".$userInfoOfisis[0]->CO_SEC."',
-        ".$userInfo[0]->ID_USUARIO.",
-        '{$fechaIngreso}',
-        {$idGenerador},
-        ".$tipo.",
-        ".$reg['cboCondicion'].",
-        {$estado},
-        '".$reg['txtFechaInicio']."',
-        '".$reg['txtFechaFin']."',
-        ".$reg['txtCantidadDias'].",
-        {$confirmado}, 0, GETDATE(),{$idGenerador});";
+        // $sqlQuery = " INSERT INTO dbo.TBINT_VACACIONES(id_empresa, id_sucursal, id_unidad, id_departamento, id_area, id_seccion, id_solicitante, fecha_ingreso, id_generador, idTipo, id_vaca_condicion, id_vaca_estado, fecha_inicio, fecha_fin, num_dias, confirmado, eliminado, fecha_crea, usu_crea) 
+        // VALUES (
+        // '".$userInfoOfisis[0]->CO_EMPR."',
+        // '".$infoSucursal[0]->SUCINIDSUCURSAL."',
+        // '".$userInfoOfisis[0]->CO_UNID."',
+        // '".$userInfoOfisis[0]->CO_DEPA."',
+        // '".$userInfoOfisis[0]->CO_AREA."',
+        // '".$userInfoOfisis[0]->CO_SEC."',
+        // ".$userInfo[0]->ID_USUARIO.",
+        // '{$fechaIngreso}',
+        // {$idGenerador},
+        // ".$tipo.",
+        // ".$reg['cboCondicion'].",
+        // {$estado},
+        // '".$reg['txtFechaInicio']."',
+        // '".$reg['txtFechaFin']."',
+        // ".$reg['txtCantidadDias'].",
+        // {$confirmado}, 0, GETDATE(),{$idGenerador});";
 
-        $id = $this->intra_trans->DoInsert($sqlQuery);
-        return $id;
+        $params = array(
+            array($userInfoOfisis[0]->CO_EMPR, SQLSRV_PARAM_IN),
+            array($infoSucursal[0]->SUCINIDSUCURSAL, SQLSRV_PARAM_IN),
+            array($userInfoOfisis[0]->CO_UNID, SQLSRV_PARAM_IN),
+            array($userInfoOfisis[0]->CO_DEPA, SQLSRV_PARAM_IN),
+            array($userInfoOfisis[0]->CO_AREA, SQLSRV_PARAM_IN),
+            array($userInfoOfisis[0]->CO_SEC, SQLSRV_PARAM_IN),
+            array($userInfo[0]->ID_USUARIO, SQLSRV_PARAM_IN),
+            array($fechaIngreso, SQLSRV_PARAM_IN),
+            array($idGenerador, SQLSRV_PARAM_IN),
+            array($tipo, SQLSRV_PARAM_IN),
+            array($reg['cboCondicion'], SQLSRV_PARAM_IN),
+            array($estado, SQLSRV_PARAM_IN),
+            array($reg['txtFechaInicio'], SQLSRV_PARAM_IN),
+            array($reg['txtFechaFin'], SQLSRV_PARAM_IN),
+            array($reg['txtCantidadDias'], SQLSRV_PARAM_IN),
+            array($confirmado, SQLSRV_PARAM_IN),
+            array($idGenerador, SQLSRV_PARAM_IN),
+            array($periodoActual[0]->periodo, SQLSRV_PARAM_IN),
+            array($diasSubPeriodoUno, SQLSRV_PARAM_IN),
+            array($diasSubPeriodoDos, SQLSRV_PARAM_IN),
+            array($idVacacionEspecial, SQLSRV_PARAM_IN),
+            array($diasNoLaborables, SQLSRV_PARAM_IN)
+        );
+        // print_r($idVacacionEspecial);
+        // die();
+        $sqlQuery = "{CALL SP_CREATE_VACACION_PERIODO(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)}";
+
+        $this->intra_db->CallSP($sqlQuery, $params);
     }
 
     private function _insertarDistribucion($idVacacion,$distribuciones){
@@ -700,7 +762,7 @@ class VacacionModel extends ModelBase{
         return $range;
     }
 
-    private function _sumarDiasPorTipo($fechaInicio,$fechaFin){
+    public function _sumarDiasPorTipo($fechaInicio,$fechaFin){
         $response = array('habil' => 0,'no_habil' => 0);
 
         $begin = new DateTime($fechaInicio);
@@ -1038,14 +1100,26 @@ class VacacionModel extends ModelBase{
 
         return $qryResult;
     }
+    // public function eliminarLogicamente($idVacacion){
+    //     $userInfo = $this->sessionObj->getUserInfo();
+    //     $sqlQuery = "UPDATE TBINT_VACACIONES SET
+    //     [eliminado] = 1,
+    //     [usu_elim] = ".$userInfo[0]->ID_USUARIO.",
+    //     [fecha_elim] = GETDATE()
+    //     WHERE  id_vacacion = {$idVacacion};";
+    //     return $this->intra_db->DoUpdate($sqlQuery);
+    // }
+
     public function eliminarLogicamente($idVacacion){
         $userInfo = $this->sessionObj->getUserInfo();
-        $sqlQuery = "UPDATE TBINT_VACACIONES SET
-        [eliminado] = 1,
-        [usu_elim] = ".$userInfo[0]->ID_USUARIO.",
-        [fecha_elim] = GETDATE()
-        WHERE  id_vacacion = {$idVacacion};";
-        return $this->intra_db->DoUpdate($sqlQuery);
+        $usuario = $userInfo[0]->ID_USUARIO;
+        $params = array(
+            array($idVacacion, SQLSRV_PARAM_IN),
+            array($usuario, SQLSRV_PARAM_IN)
+        );
+
+        $sqlQuery = "{CALL SP_ELIMINA_VACACION_PERIODO(?,?)}";
+        $this->intra_db->CallSP($sqlQuery, $params);
     }
 
     public function eliminarLogicoRange(){
@@ -1376,6 +1450,107 @@ class VacacionModel extends ModelBase{
         }
 
         return $cadena;
+    }
+
+    public function listarCondicionComboEspecial($id_solicitante) {
+        $this->intra_db->usarUTF8();
+        
+        $query = "SELECT CASE WHEN EXISTS (
+                    SELECT 1 FROM TBINT_VACACIONES_TEMP 
+                    WHERE id_solicitante = '$id_solicitante' AND eliminado <> 1
+                  ) THEN 1 ELSE 0 END AS tiene_registros";
+        
+        $resultado = $this->intra_db->Consulta($query);
+        $tiene_registros = (is_object($resultado[0])) ? 
+                            $resultado[0]->tiene_registros : 
+                            $resultado[0]['tiene_registros'];
+        
+        if ($tiene_registros) {
+            $sql = "SELECT id_vaca_condicion, vaca_condicion 
+                    FROM TBINT_VACA_CONDICION 
+                    WHERE activo = 1";
+        } else {
+            $sql = "SELECT TOP 2 id_vaca_condicion, vaca_condicion 
+                    FROM TBINT_VACA_CONDICION 
+                    WHERE activo = 1 
+                    ORDER BY id_vaca_condicion ASC";
+        }
+        
+        return $this->intra_db->Consulta($sql);
+    }
+
+    public function getFechaEspecial($fechaInicio,$fechaFin, $idSolicitante){
+        $this->intra_db->usarUTF8();
+        $this->intra_db->setCampos("id_vaca_especial");
+        $this->intra_db->setTabla("TBINT_VACACIONES_TEMP");
+        $this->intra_db->setCondicionExpr("=","id_solicitante",$idSolicitante);
+        $this->intra_db->setCondicionExpr("=","fecha_inicio","'$fechaInicio'");
+        $this->intra_db->setCondicionExpr("=","fecha_fin", "'$fechaFin'");
+
+        $qryResult = $this->intra_db->Listar();
+        return $qryResult; 
+    }
+
+    public function _obtenerNumeroSolicitud($idSolicitante, $periodo) {
+        $this->intra_db->setCampos("COUNT(*) as num_solicitudes");
+        $this->intra_db->setTabla(array('DT' => 'TBINT_VACA_DETALLE_DISTRIBUCION_PERIODO'));
+        $this->intra_db->setJoin(array('DP' => 'TBINT_VACA_DISTRIBUCION_PERIODO'), 'DP.id_vaca_distribucion_periodo = DT.id_vaca_distribucion_periodo','INNER');
+        $this->intra_db->setJoin(array('V' => 'TBINT_VACACIONES'), 'V.id_vacacion = DT.id_vacacion','INNER');
+        $this->intra_db->setCondicion("=", "DP.periodo", $periodo);
+        $this->intra_db->setCondicion("IS NULL", "V.id_vaca_especial", NULL);
+        $this->intra_db->setCondicion("=", "DP.id_solicitante", $idSolicitante);
+        $result = $this->intra_db->Listar();
+
+        return isset($result[0]->num_solicitudes) ? $result[0]->num_solicitudes + 1 : 1;
+    }
+
+    public function _obtenerPeriodo($idSolicitante) {
+        $this->intra_db->setCampos("TOP 1 periodo");
+        $this->intra_db->setTabla("TBINT_VACA_DISTRIBUCION_PERIODO");
+        $this->intra_db->setCondicion("=", "id_solicitante ", $idSolicitante);
+        $this->intra_db->setOrden("periodo ASC");
+        return $result = $this->intra_db->Listar();
+    }
+
+    /**
+     * Obtiene los días ya consumidos en un subperiodo específico
+     * @param int $idSolicitante ID del solicitante
+     * @param string $periodo Período (ej: 2024-2025)
+     * @param int $subperiodo Número de subperiodo (1 o 2)
+     * @return array Información de días consumidos
+     */
+    public function _obtenerDiasConsumidosPeriodo($idSolicitante, $periodo, $subperiodo) {
+        $field = ($subperiodo == 1) ? "subperiodo_uno" : "subperiodo_dos";
+        
+        $this->intra_db->setCampos("SUM($field) as dias_consumidos");
+        $this->intra_db->setTabla("TBINT_VACA_DISTRIBUCION_PERIODO");
+        $this->intra_db->setCondicion("=", "id_solicitante", $idSolicitante);
+        $this->intra_db->setCondicion("=", "periodo", $periodo);
+        $qryResult = $this->intra_db->Listar();
+
+        return $qryResult; 
+    }
+
+    public function _obtenerDiasConsumidosPeriodoNoHabil($idSolicitante, $periodo) {
+     
+        $this->intra_db->setCampos("num_dias_no_habil as dias_consumidos_no_habil");
+        $this->intra_db->setTabla("TBINT_VACA_DISTRIBUCION_PERIODO");
+        $this->intra_db->setCondicion("=", "id_solicitante", $idSolicitante);
+        $this->intra_db->setCondicion("=", "periodo", $periodo);
+        $qryResult = $this->intra_db->Listar();
+
+        return $qryResult; 
+    }
+
+    public function _obtenerDiasConsumidosPeriodoHabil($idSolicitante, $periodo) {
+     
+        $this->intra_db->setCampos("num_dias_habil as dias_consumidos_habil");
+        $this->intra_db->setTabla("TBINT_VACA_DISTRIBUCION_PERIODO");
+        $this->intra_db->setCondicion("=", "id_solicitante", $idSolicitante);
+        $this->intra_db->setCondicion("=", "periodo", $periodo);
+        $qryResult = $this->intra_db->Listar();
+
+        return $qryResult; 
     }
 
 }
