@@ -7,6 +7,9 @@ var tbldetalleconsolidado;
 var generador = false;
 var tipocondicion = 0;
 
+var pendientesPrevios = 0;
+var programadosPrevios = 0;
+
 /*var localeDate = {
     "separator": " - ",
     "applyLabel": "Aplicar",
@@ -40,138 +43,186 @@ var tipocondicion = 0;
     "firstDay": 1
 }*/
 var dateOptions = {
-    locale: 'es',
-    format: 'DD/MM/YYYY',
-    allowInputToggle: false,
-    ignoreReadonly: true,
-    showTodayButton: true,
-    showClose: true,
-    useCurrent: false
-}
+  locale: "es",
+  format: "DD/MM/YYYY",
+  allowInputToggle: false,
+  ignoreReadonly: true,
+  showTodayButton: true,
+  showClose: true,
+  useCurrent: false,
+};
 
 $(function () {
-    /*var start = '';
+  /*var start = '';
     var end = '';*/
 
-	$('#qryFechaInicio').datetimepicker(dateOptions);
-	$('#qryFechaFin').datetimepicker(dateOptions);
+  $("#qryFechaInicio").datetimepicker(dateOptions);
+  $("#qryFechaFin").datetimepicker(dateOptions);
 
-	$("#qryFechaInicio").on("dp.change", function (e) {
-		$('#qryFechaFin').data("DateTimePicker").minDate(e.date);
-	});
-	$("#qryFechaFin").on("dp.change", function (e) {
-		$('#qryFechaInicio').data("DateTimePicker").maxDate(e.date);
-	});
-    
-	$("#qry_empresa").change(function() {
-		var $gerencia   = $("#qry_gerencia");
-		var $valor = $(this).val();
-		//Cargar información del combo de áreas
-		$gerencia.html('<option value=""> Seleccione </option>');
-		$("#qry_area").html('<option value=""> Seleccione </option>');
-		//$("#qry_seccion").html('<option value=""> Seleccione </option>');
+  $("#qryFechaInicio").on("dp.change", function (e) {
+    $("#qryFechaFin").data("DateTimePicker").minDate(e.date);
+  });
+  $("#qryFechaFin").on("dp.change", function (e) {
+    $("#qryFechaInicio").data("DateTimePicker").maxDate(e.date);
+  });
 
-		if($ajaxEmpresa && $ajaxEmpresa.readyState != 4){
-			$ajaxEmpresa.abort();
-		}
+  $("#qry_empresa").change(function () {
+    var $gerencia = $("#qry_gerencia");
+    var $valor = $(this).val();
+    //Cargar información del combo de áreas
+    $gerencia.html('<option value=""> Seleccione </option>');
+    $("#qry_area").html('<option value=""> Seleccione </option>');
+    //$("#qry_seccion").html('<option value=""> Seleccione </option>');
 
-		if($valor != ''){
-			$ajaxEmpresa = $.post('directorio/getGerencias/', {qry_empresa: $valor}, function(data) {
-				if (data.Result === 'OK') {
-					$.each(data.Options, function(index, el) {
-						$gerencia.append('<option value="' + el.Value + '">' + el.DisplayText + '</option>');
-					});
-				} else {
-					showConfirmWarning(data.Message);
-				}
-			}, 'json'); 
-		}        
-	});
+    if ($ajaxEmpresa && $ajaxEmpresa.readyState != 4) {
+      $ajaxEmpresa.abort();
+    }
 
-	$("#qry_gerencia").change(function() {
-		var $departamento   = $("#qry_departamento");
-		var $valor = $(this).val();
-		$valorEmpresa = $("#qry_empresa").val();
-		//Cargar información del combo de áreas
-		$departamento.html('<option value=""> Seleccione </option>');
-        $('#qry_area').html('<option value=""> Seleccione </option>');
-		//$("#qry_seccion").html('<option value=""> Seleccione </option>');
+    if ($valor != "") {
+      $ajaxEmpresa = $.post(
+        "directorio/getGerencias/",
+        { qry_empresa: $valor },
+        function (data) {
+          if (data.Result === "OK") {
+            $.each(data.Options, function (index, el) {
+              $gerencia.append(
+                '<option value="' +
+                  el.Value +
+                  '">' +
+                  el.DisplayText +
+                  "</option>"
+              );
+            });
+          } else {
+            showConfirmWarning(data.Message);
+          }
+        },
+        "json"
+      );
+    }
+  });
 
-		if($ajaxGerencia && $ajaxGerencia.readyState != 4){
-			$ajaxGerencia.abort();
-		}
+  $("#qry_gerencia").change(function () {
+    var $departamento = $("#qry_departamento");
+    var $valor = $(this).val();
+    $valorEmpresa = $("#qry_empresa").val();
+    //Cargar información del combo de áreas
+    $departamento.html('<option value=""> Seleccione </option>');
+    $("#qry_area").html('<option value=""> Seleccione </option>');
+    //$("#qry_seccion").html('<option value=""> Seleccione </option>');
 
-		if($valor != ''){
-			$ajaxGerencia = $.post('directorio/getDepartamentos/', {qry_empresa: $valorEmpresa, qry_gerencia: $valor}, function(data) {
-				if (data.Result === 'OK') {
-					$.each(data.Options, function(index, el) {
-						$departamento.append('<option value="' + el.Value + '">' + el.DisplayText + '</option>');
-					});
-				} else {
-					showConfirmWarning(data.Message);
-				}
-			}, 'json'); 
-		}
-	});
+    if ($ajaxGerencia && $ajaxGerencia.readyState != 4) {
+      $ajaxGerencia.abort();
+    }
 
-    $("#qry_departamento").change(function() {
-        var $area   = $("#qry_area");
-        var $valor = $(this).val();
-        $valorEmpresa = $("#qry_empresa").val();
-        $valorGerencia = $("#qry_gerencia").val();
-        //Cargar información del combo de áreas
-        $area.html('<option value=""> Seleccione </option>');
-        $("#qrySeccion").html('<option value=""> Seleccione </option>');
+    if ($valor != "") {
+      $ajaxGerencia = $.post(
+        "directorio/getDepartamentos/",
+        { qry_empresa: $valorEmpresa, qry_gerencia: $valor },
+        function (data) {
+          if (data.Result === "OK") {
+            $.each(data.Options, function (index, el) {
+              $departamento.append(
+                '<option value="' +
+                  el.Value +
+                  '">' +
+                  el.DisplayText +
+                  "</option>"
+              );
+            });
+          } else {
+            showConfirmWarning(data.Message);
+          }
+        },
+        "json"
+      );
+    }
+  });
 
-        if($ajaxDepartamento && $ajaxDepartamento.readyState != 4){
-            $ajaxDepartamento.abort();
-        }
+  $("#qry_departamento").change(function () {
+    var $area = $("#qry_area");
+    var $valor = $(this).val();
+    $valorEmpresa = $("#qry_empresa").val();
+    $valorGerencia = $("#qry_gerencia").val();
+    //Cargar información del combo de áreas
+    $area.html('<option value=""> Seleccione </option>');
+    $("#qrySeccion").html('<option value=""> Seleccione </option>');
 
-        if($valor != ''){
-            $ajaxDepartamento = $.post('directorio/getAreas/', {qry_empresa: $valorEmpresa, qry_departamento:  $valor, qry_gerencia: $valorGerencia}, function(data) {
-                if (data.Result === 'OK') {
-                    $.each(data.Options, function(index, el) {
-                        $area.append('<option value="' + el.Value + '">' + el.DisplayText + '</option>');
-                    });
-                } else {
-                    showConfirmWarning(data.Message);
-                }
-            }, 'json'); 
-        }
-    });
+    if ($ajaxDepartamento && $ajaxDepartamento.readyState != 4) {
+      $ajaxDepartamento.abort();
+    }
 
-	$("#qry_area").change(function() {
-		var $seccion   = $("#qry_seccion");
-		var $valor = $(this).val();
-		$valorEmpresa = $("#qry_empresa").val();
+    if ($valor != "") {
+      $ajaxDepartamento = $.post(
+        "directorio/getAreas/",
+        {
+          qry_empresa: $valorEmpresa,
+          qry_departamento: $valor,
+          qry_gerencia: $valorGerencia,
+        },
+        function (data) {
+          if (data.Result === "OK") {
+            $.each(data.Options, function (index, el) {
+              $area.append(
+                '<option value="' +
+                  el.Value +
+                  '">' +
+                  el.DisplayText +
+                  "</option>"
+              );
+            });
+          } else {
+            showConfirmWarning(data.Message);
+          }
+        },
+        "json"
+      );
+    }
+  });
 
-		$valorDepartamento = $("#qry_departamento").val();
-		//Cargar información del combo de áreas
-		$seccion.html('<option value=""> Seleccione </option>');
-		$("#qry_seccion").html('<option value=""> Seleccione </option>');
+  $("#qry_area").change(function () {
+    var $seccion = $("#qry_seccion");
+    var $valor = $(this).val();
+    $valorEmpresa = $("#qry_empresa").val();
 
-		if($ajaxArea && $ajaxArea.readyState != 4){
-			$ajaxArea.abort();
-		}
+    $valorDepartamento = $("#qry_departamento").val();
+    //Cargar información del combo de áreas
+    $seccion.html('<option value=""> Seleccione </option>');
+    $("#qry_seccion").html('<option value=""> Seleccione </option>');
 
-		if($valor != 0){
-			$ajaxArea = $.post('directorio/getSecciones/', {
-				qry_empresa: $valorEmpresa,
-				qry_departamento: $valorDepartamento,
-				qry_area: $valor
-			}, function(data) {
-				if (data.Result === 'OK') {
-					$.each(data.Options, function(index, el) {
-						$seccion.append('<option value="' + el.Value + '">' + el.DisplayText + '</option>');
-					});
-				} else {
-					showConfirmWarning(data.Message);
-				}
-			}, 'json'); 
-		}
-	});
+    if ($ajaxArea && $ajaxArea.readyState != 4) {
+      $ajaxArea.abort();
+    }
 
-    /*$('#reportrange').daterangepicker({
+    if ($valor != 0) {
+      $ajaxArea = $.post(
+        "directorio/getSecciones/",
+        {
+          qry_empresa: $valorEmpresa,
+          qry_departamento: $valorDepartamento,
+          qry_area: $valor,
+        },
+        function (data) {
+          if (data.Result === "OK") {
+            $.each(data.Options, function (index, el) {
+              $seccion.append(
+                '<option value="' +
+                  el.Value +
+                  '">' +
+                  el.DisplayText +
+                  "</option>"
+              );
+            });
+          } else {
+            showConfirmWarning(data.Message);
+          }
+        },
+        "json"
+      );
+    }
+  });
+
+  /*$('#reportrange').daterangepicker({
         locale: localeDate,
         autoUpdateInput: false,
         //autoApply: true,
@@ -200,415 +251,517 @@ $(function () {
         end = '';
     });*/
 
-    $("#vacacionesContainer").jtable({
-        title: 'Listado de Solicitudes de Vacaciones',
-        paging: true,
-        pageSize: 20,
-        sorting: true,
-        defaultSorting: 'fecha_inicio DESC',
-        saveUserPreferences: false,
-        toolbar: {
-            hoverAnimation: true,
-            hoverAnimationDuration: 60,
-            hoverAnimationEasing: undefined,
-            items: [{
-                icon: 'assets/browser-components/jquery-jtable/themes/lightcolor/add.png',                  
-                text: 'Crear solicitud de vacaciones',
-                click: function () {
-                    loading(true,'Obteniendo información');
+  $("#vacacionesContainer").jtable({
+    title: "Listado de Solicitudes de Vacaciones",
+    paging: true,
+    pageSize: 20,
+    sorting: true,
+    defaultSorting: "fecha_inicio DESC",
+    saveUserPreferences: false,
+    toolbar: {
+      hoverAnimation: true,
+      hoverAnimationDuration: 60,
+      hoverAnimationEasing: undefined,
+      items: [
+        {
+          icon: "assets/browser-components/jquery-jtable/themes/lightcolor/add.png",
+          text: "Crear solicitud de vacaciones",
+          click: function () {
+            loading(true, "Obteniendo información");
 
-                    $.post($getAppName+'/indexCrear/', {}, function(data) {
-                        loading(false);
-                        if (data.Result === 'OK') {
-                            generador = data.generador;
-                            //Armar el Template
-                            var template = $('#tplFrmModal').html();
-                            Mustache.parse(template);   // optional, speeds up future uses
+            $.post(
+              $getAppName + "/indexCrear/",
+              {},
+              function (data) {
+                loading(false);
+                if (data.Result === "OK") {
+                  generador = data.generador;
+                  //Armar el Template
+                  var template = $("#tplFrmModal").html();
+                  Mustache.parse(template); // optional, speeds up future uses
 
-                            var optionsRender = {
-                                action: $getAppName+'/crear',
-                                generador: data.generador,
-                                val_button: 'Generar Solicitud de vacaciones',
-                                edit  : false,
-                                listCondicion : data.cboCondicion,
-                                //sel_motivo : function() { return (this.id_vaca_condicion == data.record.id_vaca_condicion) ? "selected":"";},
-                            }
+                  var optionsRender = {
+                    action: $getAppName + "/crear",
+                    generador: data.generador,
+                    val_button: "Generar Solicitud de vacaciones",
+                    edit: false,
+                    listCondicion: data.cboCondicion,
+                    //sel_motivo : function() { return (this.id_vaca_condicion == data.record.id_vaca_condicion) ? "selected":"";},
+                  };
 
-                            if(!data.generador){
-                                optionsRender.val_empresa = data.empresa;
-                                optionsRender.val_gerencia = data.gerencia;
-                                optionsRender.val_area = data.area;
-                                optionsRender.val_id_solicitante = data.id_solicitante;
-                                optionsRender.val_fecha_ingreso = moment(data.fecha_ingreso.date).format('L');
-                            }
+                  if (!data.generador) {
+                    optionsRender.val_empresa = data.empresa;
+                    optionsRender.val_gerencia = data.gerencia;
+                    optionsRender.val_area = data.area;
+                    optionsRender.val_id_solicitante = data.id_solicitante;
+                    optionsRender.val_fecha_ingreso = moment(
+                      data.fecha_ingreso.date
+                    ).format("L");
+                  }
 
-                            var rendered = Mustache.render(template,optionsRender);
-                            $('#modalForm .modal-dialog .modal-content').html(rendered);
-                            $('#modalForm .modal-dialog').draggable({handle: ".modal-header"});
-                            setFunctionFormulario();
-                            $('#modalForm').bootstrapModal({
-                                show: true,
-                                backdrop: false
-                            });
-                        } else {
-                            showConfirmWarning(data.Message);
-                        }
-                    }, 'json')
-                    .fail(function() {
-                        loading(false);
-                        showConfirmError('Ocurrió un Error interno');
-                    });
+                  var rendered = Mustache.render(template, optionsRender);
+                  $("#modalForm .modal-dialog .modal-content").html(rendered);
+                  $("#modalForm .modal-dialog").draggable({
+                    handle: ".modal-header",
+                  });
+                  setFunctionFormulario();
+                  $("#modalForm").bootstrapModal({
+                    show: true,
+                    backdrop: false,
+                  });
+                } else {
+                  showConfirmWarning(data.Message);
                 }
-            }]
+              },
+              "json"
+            ).fail(function () {
+              loading(false);
+              showConfirmError("Ocurrió un Error interno");
+            });
+          },
         },
-        actions: {
-            listAction: $getAppName+'/listar/'
+      ],
+    },
+    actions: {
+      listAction: $getAppName + "/listar/",
+    },
+    fields: {
+      ver: {
+        title: "",
+        width: "2%",
+        sorting: false,
+        edit: false,
+        create: false,
+        display: function (data) {
+          var $button = $(
+            '<button class="btn btn-ac btn-xs" title="Aprobaciones"><i class="glyphicon glyphicon-user"></i></button>'
+          );
+          $button.click(function () {
+            $("#vacacionesContainer").jtable(
+              "openChildTable",
+              $button.closest("tr"),
+              {
+                title: " Autorizaciones",
+                actions: {
+                  listAction:
+                    $getAppName +
+                    "/listarAutorizaciones/?id_vacacion=" +
+                    data.record.id_vacacion,
+                },
+                fields: {
+                  id_vacacion: {
+                    type: "hidden",
+                    defaultValue: data.record.id_vacacion,
+                  },
+                  id_vaca_aut: {
+                    title: "idAutorizacion",
+                    key: true,
+                    list: false,
+                  },
+                  autorizador: {
+                    title: "Autorizador",
+                    width: "30%",
+                  },
+                  estado_aprobacion: {
+                    title: "Estado",
+                    width: "11%",
+                  },
+                  fecha_autorizacion: {
+                    title: "Fecha Autorización",
+                    display: function (data) {
+                      if (data.record.fecha_autorizacion) {
+                        return moment(
+                          data.record.fecha_autorizacion.date
+                        ).format("DD/MM/YYYY HH:mm");
+                      } else {
+                        return "";
+                      }
+                    },
+                    width: "17%",
+                  },
+                  motivo_rechazo: {
+                    title: "Comentario",
+                    width: "25%",
+                  },
+                },
+              },
+              function (data) {
+                //opened handler
+                data.childTable.jtable("load");
+              }
+            );
+          });
+          return $button;
         },
-        fields: {
-            ver:{
-                title: '',
-                width: '2%',
-                sorting: false,
-                edit: false,
-                create: false,
-                display: function (data) {
-                    var $button =$('<button class="btn btn-ac btn-xs" title="Aprobaciones"><i class="glyphicon glyphicon-user"></i></button>');
-                    $button.click(function () {
-                        $('#vacacionesContainer').jtable('openChildTable',
-                            $button.closest('tr'),
-                            {
-                                title: ' Autorizaciones',
-                                actions: {
-                                    listAction: $getAppName+'/listarAutorizaciones/?id_vacacion=' + data.record.id_vacacion,
-                                },
-                                fields: {
-                                    id_vacacion: {
-                                        type: 'hidden',
-                                        defaultValue: data.record.id_vacacion
-                                    },
-                                    id_vaca_aut: {
-                                        title: 'idAutorizacion',
-                                        key: true,
-                                        list: false
-                                    },
-                                    autorizador: {
-                                        title: 'Autorizador',
-                                        width: '30%'
-                                    },
-                                    estado_aprobacion: {
-                                        title: 'Estado',
-                                        width: '11%'
-                                    },
-                                    fecha_autorizacion: {
-                                        title: 'Fecha Autorización',
-                                        display:  function(data){
-                                            if(data.record.fecha_autorizacion){
-                                                return moment(data.record.fecha_autorizacion.date).format('DD/MM/YYYY HH:mm');
-                                            }else{
-                                                return '';
-                                            }
-                                        },
-                                        width: '17%'
-                                    },
-                                    motivo_rechazo: {
-                                        title: 'Comentario',
-                                        width: '25%'
-                                    }
-                                }
-                            }, function (data) { //opened handler
-                                data.childTable.jtable('load');
-                            });
-                    });
-                    return $button;
-                }
-            },
-            id_vacacion:{
-                title: 'Id',
-                width: '3%',
-                list: true,
-                key: true
-            },
-            tipo: {
-                title: 'Tipo',
-                width: '5%'
-            },
-            vaca_condicion: {
-                title: 'Condición',
-                width: '13%'
-            },
-            solicitante: {
-                title: 'solicitante',
-                width: '25%'
-            },
-            fecha_crea: {
-                title: 'Fch. Solicitud',
-                display:  function(data){
-                    return moment(data.record.fecha_crea.date).format('DD/MM/YYYY')
+      },
+      id_vacacion: {
+        title: "Id",
+        width: "3%",
+        list: true,
+        key: true,
+      },
+      tipo: {
+        title: "Tipo",
+        width: "5%",
+      },
+      vaca_condicion: {
+        title: "Condición",
+        width: "13%",
+      },
+      solicitante: {
+        title: "solicitante",
+        width: "25%",
+      },
+      fecha_crea: {
+        title: "Fch. Solicitud",
+        display: function (data) {
+          return moment(data.record.fecha_crea.date).format("DD/MM/YYYY");
+        },
+        width: "7%",
+      },
+      fecha_inicio: {
+        title: "Fch. Inicio",
+        display: function (data) {
+          return moment(data.record.fecha_inicio.date).format("DD/MM/YYYY");
+        },
+        width: "7%",
+      },
+      fecha_fin: {
+        title: "Fch. Fin",
+        display: function (data) {
+          return moment(data.record.fecha_fin.date).format("DD/MM/YYYY");
+        },
+        width: "7%",
+      },
+      num_dias: {
+        title: "# Días",
+        width: "5%",
+      },
+      vaca_estado: {
+        title: "Estado",
+        width: "10%",
+      },
+      acciones: {
+        title: "Acciones",
+        width: "8%",
+        sorting: false,
+        edit: false,
+        create: false,
+        display: function (data) {
+          var btnGroup = $('<div class="btn-group" role="group"></div>');
+          var estadosEdit = [1, 2, 3, 4];
+          var estadosEliminar = [1, 2, 3];
+          var estadosEliminarPropio = [1, 2, 3, 4];
+          var dateInicio = moment(data.record.fecha_inicio.date);
+          var diferenciaDias = dateInicio.diff(moment().startOf("day"), "days");
+
+          //editar
+          if (
+            estadosEdit.includes(data.record.id_vaca_estado) &&
+            diferenciaDias > maxDayToEdit &&
+            data.record.own
+          ) {
+            btnEditar = $(
+              '<button class="btn btn-ac btn-xs" title="Editar"><i class="fa fa-pencil"></i></button>'
+            );
+            btnEditar.click(function () {
+              loading(true, "Obteniendo información");
+
+              $.post(
+                $getAppName + "/indexCrear/",
+                { idSolicitante: data.record.id_solicitante },
+                function (result) {
+                  loading(false);
+
+                  var template = $("#tplFrmModal").html();
+                  Mustache.parse(template); // optional, speeds up future uses
+                  var optionsRender = {
+                    action: $getAppName + "/editar",
+                    val_button: "modificar solicitud de vacaciones",
+                    generador: result.generador,
+                    edit: true,
+                    val_id_vacacion: data.record.id_vacacion,
+                    listCondicion: result.cboCondicion,
+                    sel_condicion: function () {
+                      return this.id_vaca_condicion ==
+                        data.record.id_vaca_condicion
+                        ? "selected"
+                        : "";
+                    },
+                    val_empresa: data.record.empresa,
+                    val_gerencia: data.record.gerencia,
+                    val_area: data.record.area,
+                    val_id_solicitante: data.record.id_solicitante,
+                    val_nombre_solicitante: data.record.solicitante,
+                    val_fecha_ingreso: moment(
+                      result.fecha_ingreso.date,
+                      ""
+                    ).format("L"),
+                    val_fecha_inicio: moment(
+                      data.record.fecha_inicio.date
+                    ).format("L"),
+                    val_fecha_fin: moment(data.record.fecha_fin.date).format(
+                      "L"
+                    ),
+                    val_dias: data.record.num_dias,
+                  };
+
+                  var rendered = Mustache.render(template, optionsRender);
+                  $("#modalForm .modal-dialog .modal-content").html(rendered);
+                  $("#modalForm .modal-dialog").draggable({
+                    handle: ".modal-header",
+                  });
+                  setFunctionFormulario(
+                    true,
+                    data.record.fecha_inicio,
+                    data.record.fecha_fin
+                  );
+                  $("#modalForm").bootstrapModal({
+                    show: true,
+                    backdrop: false,
+                  });
                 },
-                width: '7%'
-            },
-            fecha_inicio: {
-                title: 'Fch. Inicio',
-                display:  function(data){
-                    return moment(data.record.fecha_inicio.date).format('DD/MM/YYYY')
+                "json"
+              ).fail(function () {
+                loading(false);
+                showConfirmError("Ocurrió un Error interno");
+              });
+            });
+            btnGroup.append(btnEditar);
+          }
+
+          //Confirmar Solicitud
+          if (data.record.id_vaca_estado == "1" /*&& data.record.propio*/) {
+            btnConfirmar = $(
+              '<button class="btn btn-ac btn-xs"><i class="glyphicon glyphicon-ok" title="Confirmar Solicitud"></i></button>'
+            );
+            btnConfirmar.click(function () {
+              $.post(
+                $getAppName + "/confirmarSolicitud/",
+                { id_vacacion: data.record.id_vacacion },
+                function (data) {
+                  if (data.Result === "OK") {
+                    showConfirmSuccess(
+                      "Se confirmó correctamente la solicitud de vacaciones"
+                    );
+                    $("#vacacionesContainer").jtable("reload");
+                  } else {
+                    showConfirmWarning(data.Message);
+                  }
                 },
-                width: '7%'
-            },
-            fecha_fin: {
-                title: 'Fch. Fin',
-                display:  function(data){
-                    return moment(data.record.fecha_fin.date).format('DD/MM/YYYY')
+                "json"
+              ).fail(function () {
+                showConfirmError(
+                  "Ocurrió un Error al intentar comunicarse con el servidor"
+                );
+              });
+            });
+            btnGroup.append(btnConfirmar);
+          }
+
+          //eliminar
+          if (
+            (estadosEliminar.includes(data.record.id_vaca_estado) &&
+              data.record.own) ||
+            (estadosEliminarPropio.includes(data.record.id_vaca_estado) &&
+              data.record.propio)
+          ) {
+            btnEliminar = $(
+              '<button data-style="slide-up" class="btn btn-ac btn-xs ladda-button" title="Eliminar Solicitud"><span class="ladda-label"><i class="glyphicon glyphicon-trash"></i></span></button>'
+            );
+            var btnLdEliminar = Ladda.create(btnEliminar[0]);
+            btnEliminar.click(function () {
+              btnLdEliminar.start();
+              $.confirm({
+                theme: "warning",
+                icon: "fa fa-exclamation-triangle",
+                title: "¡Eliminar!",
+                content:
+                  "¿Esta seguro de eliminar el registro?, esta acción no podrá ser revertida.",
+                confirm: function () {
+                  $.post(
+                    $getAppName + "/borrar/",
+                    { id_vacacion: data.record.id_vacacion },
+                    function (data) {
+                      btnLdEliminar.stop();
+                      if (data.Result === "OK") {
+                        $("#vacacionesContainer").jtable("reload");
+                      } else {
+                        showConfirmWarning(data.Message);
+                      }
+                    },
+                    "json"
+                  ).fail(function () {
+                    btnLdEliminar.stop();
+                    showConfirmError(
+                      "Ocurrió un Error al intentar comunicarse con el servidor"
+                    );
+                  });
                 },
-                width: '7%'
-            },
-            num_dias: {
-                title: '# Días',
-                width: '5%'
-            },
-            vaca_estado: {
-                title: 'Estado',
-                width: '10%'
-            },
-            acciones:{
-                title: 'Acciones',
-                width: '8%',
-                sorting: false,
-                edit: false,
-                create: false,
-                display: function (data) {
-                    var btnGroup = $('<div class="btn-group" role="group"></div>');
-                    var estadosEdit = [1,2,3,4];
-                    var estadosEliminar = [1,2,3];
-                    var estadosEliminarPropio = [1,2,3,4];
-                    var dateInicio = moment(data.record.fecha_inicio.date);
-                    var diferenciaDias = dateInicio.diff(moment().startOf('day'), 'days');
+                cancel: function () {
+                  btnLdEliminar.stop();
+                },
+              });
+            });
+            btnGroup.append(btnEliminar);
+          }
 
-                    //editar
-                    if(estadosEdit.includes(data.record.id_vaca_estado) && diferenciaDias > maxDayToEdit && data.record.own){
-                        btnEditar = $('<button class="btn btn-ac btn-xs" title="Editar"><i class="fa fa-pencil"></i></button>');
-                        btnEditar.click(function () {
-                            loading(true,'Obteniendo información');
+          //Confirmar Vacacion tomada
+          if (data.record.id_vaca_estado == "4" && data.record.own) {
+            btnConfirmVaca = $(
+              '<button data-style="slide-up" class="btn btn-ac btn-xs ladda-button" title="Confirmar Vacaciones"><span class="ladda-label"><i class="fa fa-calendar-check-o"></i></span></button>'
+            );
+            var btnLdConfirmar = Ladda.create(btnConfirmVaca[0]);
+            btnConfirmVaca.click(function () {
+              btnLdConfirmar.start();
+              $.confirm({
+                theme: "warning",
+                icon: "fa fa-exclamation-triangle",
+                title: "¡Confirmar!",
+                content:
+                  "¿Esta seguro de confirmar la ejecución de las vacaciones?",
+                confirm: function () {
+                  $.post(
+                    $getAppName + "/confirmarEjecucion/",
+                    { id_vacacion: data.record.id_vacacion },
+                    function (data) {
+                      btnLdConfirmar.stop();
+                      if (data.Result === "OK") {
+                        $("#vacacionesContainer").jtable("reload");
+                      } else {
+                        showConfirmWarning(data.Message);
+                      }
+                    },
+                    "json"
+                  ).fail(function () {
+                    btnLdConfirmar.stop();
+                    showConfirmError(
+                      "Ocurrió un Error al intentar comunicarse con el servidor"
+                    );
+                  });
+                },
+                cancel: function () {
+                  btnLdConfirmar.stop();
+                },
+              });
+            });
+            btnGroup.append(btnConfirmVaca);
+          }
 
-                            $.post($getAppName+'/indexCrear/', {idSolicitante: data.record.id_solicitante}, function(result) {
-                                loading(false);
+          //Formato impreso
+          if (
+            data.record.id_vaca_estado == "4" ||
+            data.record.id_vaca_estado == "5"
+          ) {
+            btnBoleta = $(
+              '<button class="btn btn-ac btn-xs" title="Boleta"><i class="fa fa-file-text"></i></button>'
+            );
+            btnBoleta.click(function () {
+              open(
+                "POST",
+                $getAppName + "/exportarBoleta/",
+                {
+                  qryIdVacacion: data.record.id_vacacion,
+                },
+                "_blank"
+              );
+            });
+            btnGroup.append(btnBoleta);
+          }
 
-                                var template = $('#tplFrmModal').html();
-                                Mustache.parse(template);   // optional, speeds up future uses
-                                var optionsRender = {
-                                    action: $getAppName+'/editar',
-                                    val_button: 'modificar solicitud de vacaciones',
-                                    generador: result.generador,
-                                    edit  : true,
-                                    val_id_vacacion: data.record.id_vacacion,
-                                    listCondicion : result.cboCondicion,
-                                    sel_condicion : function() { return (this.id_vaca_condicion == data.record.id_vaca_condicion) ? "selected":"";},
-                                    val_empresa : data.record.empresa,
-                                    val_gerencia : data.record.gerencia,
-                                    val_area : data.record.area,
-                                    val_id_solicitante : data.record.id_solicitante,
-                                    val_nombre_solicitante : data.record.solicitante,
-                                    val_fecha_ingreso : moment(result.fecha_ingreso.date,'').format('L'),
-                                    val_fecha_inicio : moment(data.record.fecha_inicio.date).format('L'),
-                                    val_fecha_fin : moment(data.record.fecha_fin.date).format('L'),
-                                    val_dias : data.record.num_dias
-                                }
+          return btnGroup;
+        },
+      },
+    },
+  });
 
-                                var rendered = Mustache.render(template,optionsRender);
-                                $('#modalForm .modal-dialog .modal-content').html(rendered);
-                                $('#modalForm .modal-dialog').draggable({handle: ".modal-header"});
-                                setFunctionFormulario(true, data.record.fecha_inicio, data.record.fecha_fin);
-                                $('#modalForm').bootstrapModal({
-                                    show: true,
-                                    backdrop: false
-                                });
-                            }, 'json')
-                            .fail(function() {
-                                loading(false);
-                                showConfirmError('Ocurrió un Error interno');
-                            });
-
-                        });
-                        btnGroup.append(btnEditar);
-                    }
-
-                    //Confirmar Solicitud
-                    if(data.record.id_vaca_estado == '1' /*&& data.record.propio*/){
-                        btnConfirmar = $('<button class="btn btn-ac btn-xs"><i class="glyphicon glyphicon-ok" title="Confirmar Solicitud"></i></button>');
-                        btnConfirmar.click(function () {
-                            $.post($getAppName+'/confirmarSolicitud/', {id_vacacion :data.record.id_vacacion}, function(data) {
-                                if (data.Result === 'OK') {
-                                    showConfirmSuccess('Se confirmó correctamente la solicitud de vacaciones');
-                                    $('#vacacionesContainer').jtable('reload');
-                                } else {
-                                    showConfirmWarning(data.Message);
-                                }
-                            }, 'json')
-                            .fail(function() {
-                                showConfirmError('Ocurrió un Error al intentar comunicarse con el servidor');
-                            });
-                        });
-                        btnGroup.append(btnConfirmar);
-                    }
-
-                    //eliminar
-                    if((estadosEliminar.includes(data.record.id_vaca_estado) && data.record.own) || (estadosEliminarPropio.includes(data.record.id_vaca_estado) && data.record.propio)){
-                        btnEliminar = $('<button data-style="slide-up" class="btn btn-ac btn-xs ladda-button" title="Eliminar Solicitud"><span class="ladda-label"><i class="glyphicon glyphicon-trash"></i></span></button>');
-                        var btnLdEliminar = Ladda.create(btnEliminar[0]);
-                        btnEliminar.click(function () {
-                            btnLdEliminar.start();
-                            $.confirm({
-                                theme:'warning',
-                                icon: 'fa fa-exclamation-triangle',
-                                title: '¡Eliminar!',
-                                content: '¿Esta seguro de eliminar el registro?, esta acción no podrá ser revertida.',
-                                confirm: function () {
-                                    $.post($getAppName+'/borrar/', {id_vacacion:data.record.id_vacacion}, function(data) {
-                                        btnLdEliminar.stop();
-                                        if (data.Result === 'OK') {
-                                            $('#vacacionesContainer').jtable('reload');
-                                        } else {
-                                            showConfirmWarning(data.Message);
-                                        }
-                                    }, 'json')
-                                    .fail(function() {
-                                        btnLdEliminar.stop();
-                                        showConfirmError('Ocurrió un Error al intentar comunicarse con el servidor');
-                                    });
-                                },
-                                cancel: function(){
-                                    btnLdEliminar.stop();
-                                }
-                            });
-
-                        });
-                        btnGroup.append(btnEliminar);
-                    }
-
-                    //Confirmar Vacacion tomada
-                    if(data.record.id_vaca_estado == '4' && data.record.own){
-                        btnConfirmVaca = $('<button data-style="slide-up" class="btn btn-ac btn-xs ladda-button" title="Confirmar Vacaciones"><span class="ladda-label"><i class="fa fa-calendar-check-o"></i></span></button>');
-                        var btnLdConfirmar = Ladda.create(btnConfirmVaca[0]);
-                        btnConfirmVaca.click(function () {
-                            btnLdConfirmar.start();
-                            $.confirm({
-                                theme:'warning',
-                                icon: 'fa fa-exclamation-triangle',
-                                title: '¡Confirmar!',
-                                content: '¿Esta seguro de confirmar la ejecución de las vacaciones?',
-                                confirm: function () {
-                                    $.post($getAppName+'/confirmarEjecucion/', {id_vacacion:data.record.id_vacacion}, function(data) {
-                                        btnLdConfirmar.stop();
-                                        if (data.Result === 'OK') {
-                                            $('#vacacionesContainer').jtable('reload');
-                                        } else {
-                                            showConfirmWarning(data.Message);
-                                        }
-                                    }, 'json')
-                                    .fail(function() {
-                                        btnLdConfirmar.stop();
-                                        showConfirmError('Ocurrió un Error al intentar comunicarse con el servidor');
-                                    });
-                                },
-                                cancel: function(){
-                                    btnLdConfirmar.stop();
-                                }
-                            });
-                        });
-                        btnGroup.append(btnConfirmVaca);
-                    }
-
-                    //Formato impreso
-                    if(data.record.id_vaca_estado == '4' || data.record.id_vaca_estado == '5'){
-                        btnBoleta = $('<button class="btn btn-ac btn-xs" title="Boleta"><i class="fa fa-file-text"></i></button>');
-                        btnBoleta.click(function () {
-                            open('POST',$getAppName+"/exportarBoleta/",{
-                                qryIdVacacion:   data.record.id_vacacion
-                            },'_blank');
-                        });
-                        btnGroup.append(btnBoleta);
-                    }
-
-                    return btnGroup;
-                }
-            }
-        }
-    });
-
-    $('#LoadRecordsButton').click(function (e) {
-        e.preventDefault();
-        /*var qryFechaInicio = start?start.format('YYYY-MM-DD'):'';
+  $("#LoadRecordsButton").click(function (e) {
+    e.preventDefault();
+    /*var qryFechaInicio = start?start.format('YYYY-MM-DD'):'';
         var qryFechaFin = end?end.format('YYYY-MM-DD'):'';*/
 
-        $('#vacacionesContainer').jtable('load', {
-            qry_empresa     : $('#qry_empresa').val(),
-            qry_gerencia    : $("#qry_gerencia").val(),
-            qry_departamento: $("#qry_departamento").val(),
-            qry_area        : $("#qry_area").val(),
-            qry_seccion     : $("#qry_seccion").val(),
-            qry_colaborador : $("#qry_colaborador").val(),
-            qry_ini_rango   : $("#qryFechaInicio").val(),
-            qry_fin_rango   : $("#qryFechaFin").val()
-        });
+    $("#vacacionesContainer").jtable("load", {
+      qry_empresa: $("#qry_empresa").val(),
+      qry_gerencia: $("#qry_gerencia").val(),
+      qry_departamento: $("#qry_departamento").val(),
+      qry_area: $("#qry_area").val(),
+      qry_seccion: $("#qry_seccion").val(),
+      qry_colaborador: $("#qry_colaborador").val(),
+      qry_ini_rango: $("#qryFechaInicio").val(),
+      qry_fin_rango: $("#qryFechaFin").val(),
     });
+  });
 
-    $('#btnExportar').click(function(e){
-        /*var qryFechaInicio = start?start.format('YYYY-MM-DD'):'';
+  $("#btnExportar").click(function (e) {
+    /*var qryFechaInicio = start?start.format('YYYY-MM-DD'):'';
         var qryFechaFin = end?end.format('YYYY-MM-DD'):'';*/
-        
-        open('POST',$getAppName+"/exportar/",{
-            qry_empresa     : $('#qry_empresa').val(),
-            qry_gerencia    : $("#qry_gerencia").val(),
-            qry_departamento: $("#qry_departamento").val(),
-            qry_area        : $("#qry_area").val(),
-            qry_seccion     : $("#qry_seccion").val(),
-            qry_colaborador : $('#qry_colaborador').val(),
-            qry_ini_rango   : $("#qryFechaInicio").val(),
-            qry_fin_rango   : $("#qryFechaFin").val()
-        },'_blank');
-    });
 
-	$('#LoadRecordsButton').click();
-    $("#qry_empresa").change();
+    open(
+      "POST",
+      $getAppName + "/exportar/",
+      {
+        qry_empresa: $("#qry_empresa").val(),
+        qry_gerencia: $("#qry_gerencia").val(),
+        qry_departamento: $("#qry_departamento").val(),
+        qry_area: $("#qry_area").val(),
+        qry_seccion: $("#qry_seccion").val(),
+        qry_colaborador: $("#qry_colaborador").val(),
+        qry_ini_rango: $("#qryFechaInicio").val(),
+        qry_fin_rango: $("#qryFechaFin").val(),
+      },
+      "_blank"
+    );
+  });
+
+  $("#LoadRecordsButton").click();
+  $("#qry_empresa").change();
 });
 
-function setFunctionFormulario(editar,fechaInicio,fechaFin){
-    editar = editar || false;
-    var uso_vacaciones = 0;
+function setFunctionFormulario(editar, fechaInicio, fechaFin) {
+  editar = editar || false;
+  var uso_vacaciones = 0;
 
-    $('#divFechaInicio').datetimepicker(dateOptions);
-	$('#divFechaFin').datetimepicker(dateOptions);
-    
-    if(editar){
-        $('#divFechaInicio').data("DateTimePicker").minDate(moment().format('L'));
-        $('#divFechaInicio').data("DateTimePicker").maxDate(moment(fechaFin.date).format('L'));
-        $('#divFechaFin').data("DateTimePicker").minDate(moment(fechaInicio.date).format('L'));
-    }else{
-        var optMinDate = moment().format('L');
-        $('#divFechaInicio').data("DateTimePicker").minDate(optMinDate);
-        $('#divFechaFin').data("DateTimePicker").minDate(optMinDate);
+  $("#divFechaInicio").datetimepicker(dateOptions);
+  $("#divFechaFin").datetimepicker(dateOptions);
+
+  if (editar) {
+    $("#divFechaInicio").data("DateTimePicker").minDate(moment().format("L"));
+    $("#divFechaInicio")
+      .data("DateTimePicker")
+      .maxDate(moment(fechaFin.date).format("L"));
+    $("#divFechaFin")
+      .data("DateTimePicker")
+      .minDate(moment(fechaInicio.date).format("L"));
+  } else {
+    var optMinDate = moment().format("L");
+    $("#divFechaInicio").data("DateTimePicker").minDate(optMinDate);
+    $("#divFechaFin").data("DateTimePicker").minDate(optMinDate);
+  }
+
+  var maxFecha = moment().endOf("year").add(2, "years");
+  $("#divFechaFin").data("DateTimePicker").maxDate(maxFecha);
+
+  $("#divFechaInicio").on("dp.change", function (e) {
+    $("#divFechaFin").data("DateTimePicker").minDate(e.date);
+  });
+
+  $("#divFechaFin").on("dp.change", function (e) {
+    $("#divFechaInicio").data("DateTimePicker").maxDate(e.date);
+  });
+
+  $("#cboCondicion").change(function () {
+    if (
+      $("#cboSolicitante").val() &&
+      $("#txtFechaInicio").val() &&
+      $("#txtFechaFin").val()
+    ) {
+      var inicio = moment($("#txtFechaInicio").val(), "DD/MM/YYYY");
+      var fin = moment($("#txtFechaFin").val(), "DD/MM/YYYY");
+      validarTiempo(inicio, fin);
     }
-    
-    
-    var maxFecha = moment().endOf('year').add(2,'years');
-    $('#divFechaFin').data("DateTimePicker").maxDate(maxFecha);
+  });
 
-    $('#divFechaInicio').on("dp.change", function (e) {
-        $('#divFechaFin').data("DateTimePicker").minDate(e.date);
-    });
-
-    $('#divFechaFin').on("dp.change", function (e) {
-        $('#divFechaInicio').data("DateTimePicker").maxDate(e.date);
-    });
-
-    $('#cboCondicion').change(function(){
-        if($('#cboSolicitante').val() && $("#txtFechaInicio").val() && $("#txtFechaFin").val()){
-            var inicio = moment($("#txtFechaInicio").val(),'DD/MM/YYYY');
-            var fin = moment($("#txtFechaFin").val(),'DD/MM/YYYY');
-            validarTiempo(inicio, fin);
-        }
-    });
-    
-    /*if(editar){
+  /*if(editar){
         var start = moment(fechaInicio.date);
         var end = moment(fechaFin.date);
     }else{
@@ -616,8 +769,8 @@ function setFunctionFormulario(editar,fechaInicio,fechaFin){
         var end = '';
     }*/
 
-    /*********************************************** FUNCIONES PARA LAS FECHAS **********************************************/
-    /*var optionDateRange = {
+  /*********************************************** FUNCIONES PARA LAS FECHAS **********************************************/
+  /*var optionDateRange = {
         locale: localeDate,
         autoUpdateInput: false,
         format: "DD/MM/YYYY",
@@ -676,385 +829,479 @@ function setFunctionFormulario(editar,fechaInicio,fechaFin){
         });
     });*/
 
-    $('#divFechaInicio').on("dp.show", function (e) {
-        if($('#cboCondicion').val() == '0'){
-            e.preventDefault();
-            showConfirmWarning('Seleccione una condición');
-            return false;
-        }
-    });
+  $("#divFechaInicio").on("dp.show", function (e) {
+    if ($("#cboCondicion").val() == "0") {
+      e.preventDefault();
+      showConfirmWarning("Seleccione una condición");
+      return false;
+    }
+  });
 
-    $('#divFechaFin').on("dp.show", function (e) {
-        if($('#cboCondicion').val() == '0'){
-            e.preventDefault();
-            showConfirmWarning('Seleccione una condición');
-            return false;
-        }
-    });
+  $("#divFechaFin").on("dp.show", function (e) {
+    if ($("#cboCondicion").val() == "0") {
+      e.preventDefault();
+      showConfirmWarning("Seleccione una condición");
+      return false;
+    }
+  });
 
-    $('#divFechaInicio').on("dp.change", function (e) {
-        cambiarFechas(uso_vacaciones);
-    });
+  $("#divFechaInicio").on("dp.change", function (e) {
+    cambiarFechas(uso_vacaciones);
+  });
 
-    $('#divFechaFin').on("dp.change", function (e) {
-        cambiarFechas(uso_vacaciones);
-    });
+  $("#divFechaFin").on("dp.change", function (e) {
+    cambiarFechas(uso_vacaciones);
+  });
 
-    $('#cboCondicion').change(function(){
-        if($('#cboSolicitante').val()){
-            tblConsolidado.ajax.reload();
-            tbldetalleconsolidado.ajax.reload();
-        }
-    });
+  $("#cboCondicion").change(function () {
+    if ($("#cboSolicitante").val()) {
+      tblConsolidado.ajax.reload();
+      tbldetalleconsolidado.ajax.reload();
+    }
+  });
 
-    /*********************************************** TABLA DE VACACIONES CONSOLIDADA *********************************************/
-    tblConsolidado = $('#tblConsolidado').DataTable({
-        searching: false,
-        processing: true,
-        serverSide: true,
-        responsive: true,
-        autoWidth: true,
-        lengthChange: false,
-        deferLoading: 0, //Deshabilitar el ajax automatico
-        sorting: false,
-        info: false,
-        paging: false,
-        ordering: false,
-        ajax: {
-            url: $getAppName+'/listarConsolidado/',
-            type: 'POST',
-            data: function(){
-                var data = { 
-                    idSolicitante: $('#cboSolicitante').val(),
-                    idCondicion: $('#cboCondicion').val(),
-                    modificacion: editar,
-                    idSolicitud: $('#idSolicitud').val()
-                };
-                return data;
-            }
+  /*********************************************** TABLA DE VACACIONES CONSOLIDADA *********************************************/
+  tblConsolidado = $("#tblConsolidado").DataTable({
+    searching: false,
+    processing: true,
+    serverSide: true,
+    responsive: true,
+    autoWidth: true,
+    lengthChange: false,
+    deferLoading: 0, //Deshabilitar el ajax automatico
+    sorting: false,
+    info: false,
+    paging: false,
+    ordering: false,
+    ajax: {
+      url: $getAppName + "/listarConsolidado/",
+      type: "POST",
+      data: function () {
+        var data = {
+          idSolicitante: $("#cboSolicitante").val(),
+          idCondicion: $("#cboCondicion").val(),
+          modificacion: editar,
+          idSolicitud: $("#idSolicitud").val(),
+        };
+        return data;
+      },
+    },
+    columns: [
+      { data: "trunco", title: "Truncas" },
+      { data: "ganado", title: "Pendientes" },
+      { data: "vencido", title: "Vencidas" },
+      { data: "programado", title: "Programadas" },
+      {
+        data: "por_programar",
+        title: "Por Programar",
+        render: function (data, type, row, meta) {
+          if (typeof row.por_programar === "object") {
+            return (
+              "Habiles: <b>" +
+              row.por_programar.habil +
+              "</b> <br> No Hábiles: <b>" +
+              row.por_programar.no_habil +
+              "</b>"
+            );
+          } else {
+            return row.por_programar;
+          }
         },
-        columns: [
-            { data: "trunco", title : "Truncas"},
-            { data: "ganado", title : "Pendientes"},
-            { data: "vencido", title : "Vencidas"},
-            { data: 'programado', title: 'Programadas'},
-            { data: "por_programar", title : "Por Programar",
-                render: function (data, type, row, meta){
-                    if(typeof row.por_programar === 'object'){
-                        return 'Habiles: <b>'+row.por_programar.habil+'</b> <br> No Hábiles: <b>'+row.por_programar.no_habil+'</b>';
-                    }else{
-                        return row.por_programar;
-                    }
-                }
-            }
-        ]
-    });
+      },
+    ],
+  });
 
-    tbldetalleconsolidado = $('#tbldetalleconsolidado').DataTable({
-        searching: false,
-        processing: true,
-        serverSide: true,
-        responsive: true,
-        autoWidth: true,
-        lengthChange: false,
-        deferLoading: 0, //Deshabilitar el ajax automatico
-        sorting: false,
-        info: false,
-        paging: false,
-        ordering: false,
-        ajax: {
-            url: $getAppName+'/listarConsolidadoDetalle/',
-            type: 'POST',
-            data: function(){
-                var data = { 
-                    idSolicitante: $('#cboSolicitante').val(),
-                    idemprealidad: $('#qry_empresa').val(),
-                    idCondicion: $('#cboCondicion').val(),
-                    modificacion: editar,
-                    idSolicitud: $('#idSolicitud').val()
-                };
-                return data;
-            }
+  tblConsolidado.on("xhr", function (e, settings, json) {
+    if (json.data.length > 0) {
+      var datosIniciales = json.data[0]; // Captura la primera fila
+  
+      var truncas = parseFloat(datosIniciales.trunco) || 0;
+      var pendientes = parseFloat(datosIniciales.ganado) || 0;
+      var vencidas = parseFloat(datosIniciales.vencido) || 0;
+      var programadas = parseFloat(datosIniciales.programado) || 0;
+
+      if (programadosPrevios == null || programadosPrevios == 0) {
+        programadosPrevios = (programadas);
+        $("#programadosPrevios").val(programadosPrevios);
+
+      } else {
+        console.log("No entró en el if. Valor actual:", programadosPrevios);
+      }
+    }
+  });
+  
+
+  tbldetalleconsolidado = $("#tbldetalleconsolidado").DataTable({
+    searching: false,
+    processing: true,
+    serverSide: true,
+    responsive: true,
+    autoWidth: true,
+    lengthChange: false,
+    deferLoading: 0, //Deshabilitar el ajax automatico
+    sorting: false,
+    info: false,
+    paging: false,
+    ordering: false,
+    ajax: {
+      url: $getAppName + "/listarConsolidadoDetalle/",
+      type: "POST",
+      data: function () {
+        var data = {
+          idSolicitante: $("#cboSolicitante").val(),
+          idemprealidad: $("#qry_empresa").val(),
+          idCondicion: $("#cboCondicion").val(),
+          modificacion: editar,
+          idSolicitud: $("#idSolicitud").val(),
+        };
+        return data;
+      },
+    },
+    columns: [
+      { data: "PE_VACA", title: "PERIODO" },
+      { data: "GANADAS", title: "PENDIENTES" },
+      { data: "GOZADAS", title: "GOZADAS" },
+      { data: "TRUNCAS", title: "TRUNCAS" },
+      { data: "SALDO", title: "SALDO" },
+      { data: "ESTADO", title: "ESTADO" },
+    ],
+  });
+
+  /*********************************************** FUNCIONES PARA LISTADO DE GENERADORES **********************************************/
+  if ($("#cboSolicitante").attr("type") == "hidden") {
+    tblConsolidado.ajax.reload();
+    tbldetalleconsolidado.ajax.reload();
+    //Obtener la cantidad de dias disponibles por "Uso de vacaciones"
+    $.post(
+      $getAppName + "/listarConsolidado/",
+      {
+        idSolicitante: $("#cboSolicitante").val(),
+        idCondicion: 1,
+        idSolicitud: $("#idSolicitud").val(),
+      },
+      function (data) {
+        uso_vacaciones = data.data[0].por_programar;
+      },
+      "json"
+    ).fail(function () {
+      showConfirmError(
+        'Ocurrió un Error al consultar la disponibilidad de "Uso de vacaciones"'
+      );
+    });
+  } else {
+    var opt = {
+      ajax: {
+        url: $getAppName + "/buscarSolicitante",
+        type: "POST",
+        dataType: "json",
+        data: {
+          q: "{{{q}}}",
         },
-        columns: [
-            { data: "PE_VACA", title : "PERIODO"},
-            { data: "GANADAS", title : "PENDIENTES"},
-            { data: "GOZADAS", title : "GOZADAS"},
-            { data: 'TRUNCAS', title: 'TRUNCAS'},
-            { data: "SALDO", title : "SALDO"},
-            { data:"ESTADO", title: "ESTADO"}
-        ]
-    });
+      },
+      log: 0,
+      minLength: 3,
+      preserveSelected: false,
+      locale: {
+        emptyTitle: "Seleccione y comience a escribir",
+        currentlySelected: "Seleccionado",
+        searchPlaceholder: "Buscar...",
+        statusSearching: "Buscando...",
+        statusNoResults: "Sin Resultados",
+        statusInitialized: "Empieza a escribir una consulta de búsqueda",
+        statusSearching: "Buscando...",
+        statusTooShort: "Introduzca más caracteres",
+        errorText: "No se puede recuperar resultados",
+      },
+      preprocessData: function (data) {
+        var i,
+          l = data.length,
+          array = [];
+        if (l) {
+          for (i = 0; i < l; i++) {
+            array.push(
+              $.extend(true, data[i], {
+                text: data[i].DisplayText,
+                value: data[i].Value,
+                data: {
+                  subtext: data[i].DisplayText2,
+                  id_solicitante: data[i].Value,
+                  fecha_ingreso: moment(data[i].fechaIngreso.date).format("L"),
+                },
+              })
+            );
+          }
+        }
+        // You must always return a valid array when processing data. The
+        // data argument passed is a clone and cannot be modified directly.
+        return array;
+      },
+    };
 
-    /*********************************************** FUNCIONES PARA LISTADO DE GENERADORES **********************************************/
-    if($('#cboSolicitante').attr('type') == 'hidden'){
+    $("#cboSolicitante")
+      .selectpicker()
+      .filter(".with-ajax")
+      .ajaxSelectPicker(opt);
+
+    $("#cboSolicitante").on(
+      "changed.bs.select",
+      function (e, clickedIndex, isSelected, previousValue) {
+        var option = $("#cboSolicitante option")[clickedIndex];
+        var data = $(option).data();
+        var fechaIngreso = data.fecha_ingreso;
+        $("#txtFechaIngreso").val(fechaIngreso);
         tblConsolidado.ajax.reload();
         tbldetalleconsolidado.ajax.reload();
         //Obtener la cantidad de dias disponibles por "Uso de vacaciones"
-        $.post($getAppName+'/listarConsolidado/', {idSolicitante: $('#cboSolicitante').val(), idCondicion: 1, idSolicitud: $('#idSolicitud').val()}, function(data) {
-            uso_vacaciones = data.data[0].por_programar;                
-        }, 'json')
-        .fail(function() {
-            showConfirmError('Ocurrió un Error al consultar la disponibilidad de "Uso de vacaciones"');
+        $.post(
+          $getAppName + "/listarConsolidado/",
+          {
+            idSolicitante: data.id_solicitante,
+            idCondicion: 1,
+            idSolicitud: $("#idSolicitud").val(),
+          },
+          function (data) {
+            uso_vacaciones = data.data[0].por_programar;
+          },
+          "json"
+        ).fail(function () {
+          showConfirmError(
+            'Ocurrió un Error al consultar la disponibilidad de "Uso de vacaciones"'
+          );
         });
-    }else{
-        var opt = {
-            ajax : {
-                url     : $getAppName+'/buscarSolicitante',
-                type    : 'POST',
-                dataType: 'json',
-                data    : {
-                    q: '{{{q}}}'
-                }
-            },
-            log : 0,
-            minLength: 3,
-            preserveSelected: false,
-            locale: {
-				emptyTitle: "Seleccione y comience a escribir",
-				currentlySelected: "Seleccionado",
-				searchPlaceholder: "Buscar...",
-				statusSearching: "Buscando...",
-				statusNoResults: "Sin Resultados",
-				statusInitialized: "Empieza a escribir una consulta de búsqueda",
-				statusSearching: "Buscando...",
-				statusTooShort: 'Introduzca más caracteres',
-				errorText: "No se puede recuperar resultados",
-			},
-            preprocessData: function (data) {
-                var i, l = data.length, array = [];
-                if (l) {
-                    for (i = 0; i < l; i++) {
-                        array.push($.extend(true, data[i], {
-                            text : data[i].DisplayText,
-                            value: data[i].Value,
-                            data : {
-                                subtext: data[i].DisplayText2,
-                                id_solicitante: data[i].Value,
-                                fecha_ingreso: moment(data[i].fechaIngreso.date).format('L') 
-                            }
-                        }));
-                    }
-                }
-                // You must always return a valid array when processing data. The
-                // data argument passed is a clone and cannot be modified directly.
-                return array;
+      }
+    );
+  }
+
+  var btnLaddaSubmit = Ladda.create($("#btnSubmit")[0]);
+  $("#frmModal").validate({
+    ignore: "",
+    rules: {
+      cboSolicitante: { required: generador },
+      txtFechaIngreso: { required: true },
+      cboCondicion: { required: true },
+      txtCantidadDias: { required: true },
+      txtFechaInicio: { required: true },
+      txtFechaFin: { required: true },
+    },
+    messages: {
+      cboSolicitante: { required: "Seleccione un solicitante." },
+      txtFechaIngreso: { required: "Fecha de Ingreso invalido." },
+      cboCondicion: { required: "Seleccione una condición." },
+      txtCantidadDias: { required: "Seleccione un rango de días valido." },
+      txtFechaInicio: { required: "Ingrese la fecha de inicio." },
+      txtFechaFin: { required: "Ingrese la fecha de fin." },
+    },
+    invalidHandler: function (e, validator) {
+      var mensaje = validator.errorList[0].message;
+    },
+    submitHandler: function (e) {
+      btnLaddaSubmit.start();
+      var options = {
+        beforeSubmit: function (arr, $form, options) {
+          var inicio = moment($("#txtFechaInicio").val(), "DD/MM/YYYY");
+          var fin = moment($("#txtFechaFin").val(), "DD/MM/YYYY");
+          arr.forEach((element) => {
+            if (element.name == "txtFechaInicio") {
+              element.value = inicio.format("YYYY-MM-DD");
             }
-        };
 
-        $("#cboSolicitante").selectpicker().filter('.with-ajax').ajaxSelectPicker(opt);
+            if (element.name == "txtFechaFin") {
+              element.value = fin.format("YYYY-MM-DD");
+            }
+          });
 
-        $('#cboSolicitante').on('changed.bs.select', function (e, clickedIndex, isSelected, previousValue) {
-            var option = $('#cboSolicitante option')[clickedIndex];
-            var data = $(option).data();
-            var fechaIngreso = data.fecha_ingreso;
-            $('#txtFechaIngreso').val(fechaIngreso);
-            tblConsolidado.ajax.reload();
-            tbldetalleconsolidado.ajax.reload();
-            //Obtener la cantidad de dias disponibles por "Uso de vacaciones"
-            $.post($getAppName+'/listarConsolidado/', {idSolicitante: data.id_solicitante, idCondicion: 1, idSolicitud: $('#idSolicitud').val()}, function(data) {
-                uso_vacaciones = data.data[0].por_programar;                
-            }, 'json')
-            .fail(function() {
-                showConfirmError('Ocurrió un Error al consultar la disponibilidad de "Uso de vacaciones"');
-            });
-        });
-    }
-
-    var btnLaddaSubmit = Ladda.create($('#btnSubmit')[0]);
-    $('#frmModal').validate({
-        ignore: '',
-        rules: {
-            cboSolicitante:  {required: generador},
-            txtFechaIngreso: {required: true},
-            cboCondicion:    {required: true},
-            txtCantidadDias: {required: true},
-            txtFechaInicio: {required: true},
-            txtFechaFin: {required: true}
+          var regConsolidado = tblConsolidado.row(0).data();
+          var modalidad = $("#cboSolicitante").attr("type") == "hidden" ? 1 : 3;
+          //arr.push({name: 'txtFechaInicio', value : inicio.format('YYYY-MM-DD')});
+          //arr.push({name: 'txtFechaFin', value : fin.format('YYYY-MM-DD')});
+          arr.push({
+            name: "tblConsolidado",
+            value: JSON.stringify(regConsolidado),
+          });
+          arr.push({ name: "modalidad", value: modalidad });
+          return arr;
         },
-        messages: {
-            cboSolicitante :  { required : 'Seleccione un solicitante.'},
-            txtFechaIngreso : { required : 'Fecha de Ingreso invalido.'},
-            cboCondicion:     { required : 'Seleccione una condición.'},
-            txtCantidadDias:  { required : 'Seleccione un rango de días valido.'},
-            txtFechaInicio:  { required : 'Ingrese la fecha de inicio.'},
-            txtFechaFin:  { required : 'Ingrese la fecha de fin.'}
+        beforeSend: function (e) {
+          //VALIDACION PREVIA
+          status = validarUsoDeVacaciones(uso_vacaciones);
+          if (status == "false") {
+            e.abort();
+            btnLaddaSubmit.stop();
+            return false;
+          }
+
+          var inicio = moment($("#txtFechaInicio").val(), "DD/MM/YYYY");
+          var fin = moment($("#txtFechaFin").val(), "DD/MM/YYYY");
+          status = validarTiempo(inicio, fin);
+          if (status == "false") {
+            e.abort();
+            btnLaddaSubmit.stop();
+            return false;
+          }
         },
-        invalidHandler: function(e, validator) {
-            var mensaje = validator.errorList[0].message;
+        success: function (data) {
+          btnLaddaSubmit.stop();
+          if (data.Result == "OK") {
+            showConfirmSuccess(
+              "Se proceso correctamente la solicitud de vacaciones"
+            );
+            $("#modalForm").bootstrapModal("hide");
+            $("#vacacionesContainer").jtable("reload");
+          } else {
+            showConfirmError(data.Message);
+          }
         },
-        submitHandler: function(e) {
-            btnLaddaSubmit.start();
-            var options = {
-                beforeSubmit: function(arr, $form, options) {
-                    var inicio = moment($("#txtFechaInicio").val(),'DD/MM/YYYY');
-                    var fin = moment($("#txtFechaFin").val(),'DD/MM/YYYY');
-                    arr.forEach(element => {
-                        if(element.name == "txtFechaInicio"){
-                            element.value = inicio.format('YYYY-MM-DD')
-                        }
+        error: function () {
+          showConfirmError("Ocurrió un error interno");
+          btnLaddaSubmit.stop();
+        },
+        complete: function () {
+          btnLaddaSubmit.stop();
+        },
+        dataType: "json",
+      };
+      $("#frmModal").ajaxSubmit(options);
+    },
+  });
 
-                        if(element.name == "txtFechaFin"){
-                            element.value = fin.format('YYYY-MM-DD')
-                        }
-                    });
-
-                    var regConsolidado = tblConsolidado.row(0).data();
-                    var modalidad = ($('#cboSolicitante').attr('type') == 'hidden')?1:3;
-                    //arr.push({name: 'txtFechaInicio', value : inicio.format('YYYY-MM-DD')});
-                    //arr.push({name: 'txtFechaFin', value : fin.format('YYYY-MM-DD')});
-                    arr.push({name: 'tblConsolidado', value : JSON.stringify(regConsolidado)});
-                    arr.push({name: 'modalidad', value : modalidad});
-                    return arr;                 
-                },
-                beforeSend: function(e) {
-                    //VALIDACION PREVIA
-                    status = validarUsoDeVacaciones(uso_vacaciones);
-                    if(status == 'false'){
-                        e.abort();
-                        btnLaddaSubmit.stop();
-                        return false;
-                    }
-
-                    var inicio = moment($("#txtFechaInicio").val(),'DD/MM/YYYY');
-                    var fin = moment($("#txtFechaFin").val(),'DD/MM/YYYY');
-                    status = validarTiempo(inicio,fin);
-                    if(status == 'false'){
-                        e.abort();
-                        btnLaddaSubmit.stop();
-                        return false;
-                    }
-                },
-                success: function(data) {
-                    btnLaddaSubmit.stop();
-                    if (data.Result == 'OK') {
-                        showConfirmSuccess('Se proceso correctamente la solicitud de vacaciones');
-                        $('#modalForm').bootstrapModal('hide');
-                        $('#vacacionesContainer').jtable('reload');
-                    }else{
-                        showConfirmError(data.Message);
-                    }
-                },
-                error: function() {
-                    showConfirmError('Ocurrió un error interno');
-                    btnLaddaSubmit.stop();
-                },
-                complete: function() {
-                    btnLaddaSubmit.stop();
-                },
-                dataType: 'json'
-            };
-            $('#frmModal').ajaxSubmit(options);
-        }
-    });
-
-    //$('#divFechaInicio').trigger('dp.change');
-	//$('#divFechaFin').trigger('dp.change');
+  //$('#divFechaInicio').trigger('dp.change');
+  //$('#divFechaFin').trigger('dp.change');
 }
 
-function cambiarFechas(uso_vacaciones){
-    if($("#txtFechaInicio").val()=="" || $("#txtFechaFin").val()==""){
-        return false;
-    }
+function cambiarFechas(uso_vacaciones) {
+  if ($("#txtFechaInicio").val() == "" || $("#txtFechaFin").val() == "") {
+    return false;
+  }
 
-    start = moment($("#txtFechaInicio").val(),'DD/MM/YYYY');
-    end = moment($("#txtFechaFin").val(),'DD/MM/YYYY');
+  start = moment($("#txtFechaInicio").val(), "DD/MM/YYYY");
+  end = moment($("#txtFechaFin").val(), "DD/MM/YYYY");
 
-    var numDias = end.diff(start,'days') + 1;
-    $('#txtCantidadDias').val(numDias);
+  var numDias = end.diff(start, "days") + 1;
+  $("#txtCantidadDias").val(numDias);
 
-    status = validarUsoDeVacaciones(uso_vacaciones);
-    if(status == 'false'){
-        return false;
-    }
-    data = { fechaInicio: start.format('YYYY-MM-DD'), fechaFin: end.format('YYYY-MM-DD'), idCondicion:$('#cboCondicion').val() , idSolicitante: $('#cboSolicitante').val() };
-    loading(true,'Validando fechas');
-    $.post($getAppName+'/validarFechas/', data, function(data) {
-        loading(false);
-        if (data.Result === 'OK') {
-            validarTiempo(start,end);
-            $('idvacacionespecial').val(data.idFechaEspecial);
-        } else {
-            showConfirmWarning(data.Message);
-        }
-    }, 'json')
-    .fail(function() {
-        loading(false);
-        showConfirmError('Ocurrió un Error interno');
-        //ev.preventDefault();
-        return false;
-    });
+  status = validarUsoDeVacaciones(uso_vacaciones);
+  if (status == "false") {
+    return false;
+  }
+  // data = { fechaInicio: start.format('YYYY-MM-DD'), fechaFin: end.format('YYYY-MM-DD'), idCondicion:$('#cboCondicion').val() , idSolicitante: $('#cboSolicitante').val() };
+  // loading(true,'Validando fechas');
+  // $.post($getAppName+'/validarFechas/', data, function(data) {
+  //     loading(false);
+  //     if (data.Result === 'OK') {
+  //         validarTiempo(start,end);
+  //         $('idvacacionespecial').val(data.idFechaEspecial);
+  //     } else {
+  //         showConfirmWarning(data.Message);
+  //     }
+  // }, 'json')
+  // .fail(function() {
+  //     loading(false);
+  //     showConfirmError('Ocurrió un Error interno');
+  //     //ev.preventDefault();
+  //     return false;
+  // });
 }
 
-function loading(mostrar,mensaje){
-    if(mostrar){
-        $('body').loadingModal({
-            position: 'auto',
-            text: mensaje,
-            color: '#fff',
-            opacity: '0.7',
-            backgroundColor: 'rgb(0,0,0)',
-            animation: 'wave'
-        });
-    }else{
-        $('body').loadingModal('hide');
-        setTimeout(function(){ 
-            $('body').loadingModal('destroy');
-        }, 2000);
-    }
+function loading(mostrar, mensaje) {
+  if (mostrar) {
+    $("body").loadingModal({
+      position: "auto",
+      text: mensaje,
+      color: "#fff",
+      opacity: "0.7",
+      backgroundColor: "rgb(0,0,0)",
+      animation: "wave",
+    });
+  } else {
+    $("body").loadingModal("hide");
+    setTimeout(function () {
+      $("body").loadingModal("destroy");
+    }, 2000);
+  }
 }
 
 // validar
 function validarTiempo(fechaInicio, fechaFin) {
-    var condicion = $('#cboCondicion').val();
-    var numDias = fechaFin.diff(fechaInicio, 'days') + 1;
-    var regConsolidado = tblConsolidado.row(0).data();
-    var disponible = 0;
+  var condicion = $("#cboCondicion").val();
+  var numDias = fechaFin.diff(fechaInicio, "days") + 1;
+  var regConsolidado = tblConsolidado.row(0).data();
+  var disponible = 0;
 
-    $('#txtCantidadDias').val(numDias);
+  if(pendientesPrevios == 0) {
+    pendientesPrevios = Math.max(
+      0,
+      (parseFloat(regConsolidado.vencido) || 0) +
+        (parseFloat(regConsolidado.ganado) || 0) -
+        (parseFloat(regConsolidado.programado) || 0)
+    );
+    
+  }
 
-    if(!regConsolidado) return false;
-    
-    // Validar que no seleccione truncas si tiene vencidas o ganadas
-    if(condicion == '2') {
-        if(parseFloat(regConsolidado.vencido) > 0 || parseFloat(regConsolidado.ganado) > 0) {
-            showConfirmWarning('No puede seleccionar adelanto a cuenta de vacaciones truncas, si dispone de vacaciones vencidas o pendientes.');
-            return false;
-        }
-    }
-    
-    // Calcular disponibilidad según condición
-    if(condicion == '1') {
-        // Para condición 1, usar primero vencidas, luego ganadas
-        if(parseFloat(regConsolidado.vencido) > 0) {
-            disponible = parseFloat(regConsolidado.vencido) - parseFloat(regConsolidado.programado);
-            tipoVacacion = 'vencidas';
-        } else {
-            disponible = parseFloat(regConsolidado.ganado) - parseFloat(regConsolidado.programado);
-            tipoVacacion = 'pendientes';
-        }
-    } else if(condicion == '2') {
-        // Para condición 2, solo truncas
-        disponible = parseFloat(regConsolidado.trunco) - parseFloat(regConsolidado.programado);
-        tipoVacacion = 'truncas';
-    }
+  $("#txtCantidadDias").val(numDias);
 
-    if(condicion != '3'){
-        if(numDias > disponible) {
-            showConfirmWarning('Solo tienes disponible ' + disponible.toFixed(2) + ' días en el periodo de vacaciones ' + tipoVacacion + '. Por favor, ajusta la cantidad de días solicitados.');
-            return false;
-        }
+  if (!regConsolidado) return false;
+
+  // Validar que no seleccione truncas si tiene vencidas o ganadas
+  if (condicion == "2") {
+    if (
+      Math.max(
+        0,
+        ((parseFloat(regConsolidado.vencido) || 0) +
+          (parseFloat(regConsolidado.ganado) || 0)) -
+          programadosPrevios ) > 0
+    ) {
+      showConfirmWarning(
+        "No puede seleccionar adelanto a cuenta de vacaciones truncas, si dispone de vacaciones vencidas o pendientes."
+      );
+      return false;
     }
-    
-    return true;
+  }
+
+  // Calcular disponibilidad según condición
+  if (condicion == "1") {
+    // Para condición 1, usar primero vencidas, luego ganadas
+    if (parseFloat(regConsolidado.vencido) > 0) {
+      disponible =
+        parseFloat(regConsolidado.vencido) -
+        parseFloat(regConsolidado.programado);
+      tipoVacacion = "vencidas";
+    } else {
+      disponible =
+        parseFloat(regConsolidado.ganado) -
+        parseFloat(regConsolidado.programado);
+      tipoVacacion = "pendientes";
+    }
+  } else if (condicion == "2") {
+    // Para condición 2, solo truncas
+    disponible =
+      parseFloat(regConsolidado.trunco) - parseFloat(regConsolidado.programado);
+    tipoVacacion = "truncas";
+  }
+
+  if (condicion != "3") {
+    if (numDias > disponible) {
+      showConfirmWarning(
+        "Solo tienes disponible " +
+          disponible.toFixed(2) +
+          " días en el periodo de vacaciones " +
+          tipoVacacion +
+          ". Por favor, ajusta la cantidad de días solicitados."
+      );
+      return false;
+    }
+  }
+
+  return true;
 }
 
-function validarUsoDeVacaciones(usoDeVacaciones){
-    var condicion = $('#cboCondicion').val();
-    if(condicion == '2' && usoDeVacaciones > 0){
-        showConfirmWarning('No puede seleccionar adelanto a cuenta de vacaciones truncas, si dispone de vacaciones vencidas o pendientes.');
-        return false;
-    }
+function validarUsoDeVacaciones(usoDeVacaciones) {
+  var condicion = $("#cboCondicion").val();
+  if (condicion == "2" && usoDeVacaciones > 0) {
+    showConfirmWarning(
+      "No puede seleccionar adelanto a cuenta de vacaciones truncas, si dispone de vacaciones vencidas o pendientes."
+    );
+    return false;
+  }
 
-    return true;
+  return true;
 }

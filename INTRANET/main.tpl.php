@@ -330,7 +330,7 @@
                             <table id="tbldetalleconsolidado" class="table datatable table-striped table-bordered table-hover toggle-arrow-tiny display nowrap" cellspacing="0" width="100%">
                                 <caption style="caption-side: top; font-size: 1.2em; font-weight: bold;">Detalle de vacaciones por periodo</caption>
                             </table>
-                            <input type="hidden" name="idvacacionespecial" id="idvacacionespecial"/>
+                            <input type="hidden" name="programadosPrevios" id="programadosPrevios"/>
                             {{#edit}}
                                 <div class="alert alert-info ac-alert-info" role="alert">
                                     <i class="glyphicon glyphicon-question-sign"></i> La cantidad de dias a programar, incluye los días de la solicitud
