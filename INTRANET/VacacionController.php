@@ -747,6 +747,19 @@ class VacacionController extends ControllerBase
         $gump = new GUMP();
         $vacacionModelObj = new VacacionModel();
 
+        // DNI para probar (puedes usar el mismo que ya has estado utilizando)
+    $dni = '40648343';
+    
+    // Llama a la función y obtiene el resultado
+    $resultado = $vacacionModelObj->_obtenerPeriodoActual($dni);
+    $resultado2 = $vacacionModelObj->_calcularDiasFaltantesPeriodoActual($dni, '01', $resultado['periodo']);
+    
+    // // También puedes mostrar solo el periodo
+    // echo "Periodo menor: " . $resultado['periodo'] . "\n";
+    // echo "Días faltantes: " . $resultado2[0]->HABIL . "\n";
+    // echo "Días consumidos: " . $resultado2[0]->NO_HABIL . "\n";
+    //     die();
+
         $gump->validation_rules(array(
             'cboSolicitante' => 'required',
             'cboCondicion' => 'required',

@@ -825,7 +825,7 @@ class VacacionModel extends ModelBase
             array($truncas, SQLSRV_PARAM_IN)
         );
 
-        $sqlQuery = "{CALL USP_VACA_PERIODO(?,?,?,?)}";
+        $sqlQuery = "{CALL USP_VACA_PERIODO_OPTIMIZADO(?,?,?,?)}";
         $qryResult = $this->intra_db->CallSPWithResult($sqlQuery, $params);
         return $qryResult;
     }
@@ -1637,4 +1637,68 @@ class VacacionModel extends ModelBase
         $qryResult = $this->intra_db->Listar();
         return $qryResult;
     }
+
+    // public function _calcularDiasFaltantesPeriodoActualSinDni($cod_empr, $periodo)
+    // {
+    //     $this->intra_db->setCampos("SUM(NRO_DIAS - dbo.FUNC_NUM_DAYS_NO_HABIL(CO_EMPR,CO_SEDE,FECHA_INICIAL,FECHA_FINAL)) AS HABIL, SUM(dbo.FUNC_NUM_DAYS_NO_HABIL(CO_EMPR,CO_SEDE,FECHA_INICIAL,FECHA_FINAL)) AS NO_HABIL");
+    //     $this->intra_db->setTabla("VW_OFI_VACACIONES");
+    //     $this->intra_db->setCondicion("=", "CO_EMPR", $cod_empr);
+    //     $this->intra_db->setCondicion("=", "PERIODO_VACACIONAL", $periodo);
+
+    //     $qryResult = $this->intra_db->Listar();
+    //     return $qryResult;
+    // }
+
+    public function _obtenerPeriodoActual($dni)
+    {
+        // Preparar variables
+        $fechaCorte = date('Y-m-d');
+        $filtroTrabajador = "AND TE.CO_TRAB IN ('".$dni."')";
+        
+        // Parámetros para el stored procedure
+        $params = array(
+            array('REM', SQLSRV_PARAM_IN),              // @ISTI_VACA
+            array('OFISIS', SQLSRV_PARAM_IN),           // @ISCO_GRUP
+            array($fechaCorte, SQLSRV_PARAM_IN),        // @IDFE_CORT
+            array('AND TE.CO_EMPR = 01', SQLSRV_PARAM_IN), // @ISCO_WHE1
+            array('', SQLSRV_PARAM_IN),                 // @ISCO_WHE2
+            array($filtroTrabajador, SQLSRV_PARAM_IN),  // @ISCO_WHE3
+            array('', SQLSRV_PARAM_IN),                 // @ISCO_WHE4
+            array('', SQLSRV_PARAM_IN),                 // @ISCO_WHE5
+            array('N', SQLSRV_PARAM_IN)                 // @ISST_VALO_VACA
+        );
+        
+        // Ejecutar el stored procedure
+        $sqlQuery = "{CALL dbo.USP_VACA_INTRANET_MEJORADO(?,?,?,?,?,?,?,?,?)}";
+        $resultados = $this->intra_db->CallSPWithResult($sqlQuery, $params);
+        
+        // Variables para almacenar el resultado
+        $periodoMenor = null;
+        $infoCompleta = null;
+        
+        if (!empty($resultados)) {
+            // Filtrar solo periodos con días pendientes mayores a cero
+            $periodosConDias = array_filter($resultados, function($item) {
+                return floatval($item->DIAS_PEND) > 0;
+            });
+            
+            if (!empty($periodosConDias)) {
+                // Ordenar los periodos por fecha (del más antiguo al más reciente)
+                usort($periodosConDias, function($a, $b) {
+                    return strcmp($a->PERIODO, $b->PERIODO);
+                });
+                
+                // El primer periodo después de ordenar será el más antiguo con días disponibles
+                $periodoMenor = $periodosConDias[0]->PERIODO;
+                $infoCompleta = $periodosConDias[0];
+            }
+        }
+        
+        // Puedes retornar solo el periodo o un objeto con toda la información
+        return [
+            'periodo' => $periodoMenor,
+            'info' => $infoCompleta
+        ];
+    }
+
 }
