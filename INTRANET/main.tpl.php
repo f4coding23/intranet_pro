@@ -1,7 +1,8 @@
 <!DOCTYPE html>
+
 <head>
     <meta charset="utf-8">
-    <base href="<?php echo $protocol . $_SERVER['HTTP_HOST'] .'/'. $rootFolder; ?>" />
+    <base href="<?php echo $protocol . $_SERVER['HTTP_HOST'] . '/' . $rootFolder; ?>" />
     <title>INTRANET</title>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <meta name="keywords" content="Intranet" />
@@ -10,32 +11,34 @@
 
     <!--**************** style *****************-->
     <link href="assets/browser-components/jquery-ui/css/jquery-ui-ac.min.css" rel="stylesheet" type="text/css" />
-    <link href="assets/browser-components/jquery-jtable/themes/lightcolor/ac/jtable.css" rel="stylesheet" type="text/css" />
+    <link href="assets/browser-components/jquery-jtable/themes/lightcolor/ac/jtable.css" rel="stylesheet"
+        type="text/css" />
     <link href="assets/browser-components/jquery_confirm/jquery-confirm.min.css" rel="stylesheet">
-    <link href="assets/browser-components/ladda/css/ladda-themeless.min.css" rel="stylesheet" type="text/css"/>
+    <link href="assets/browser-components/ladda/css/ladda-themeless.min.css" rel="stylesheet" type="text/css" />
     <!--**************** style *****************-->
 
     <!--*************** script *****************-->
     <script type="text/javascript">
         //Prevent Duplicate jquery and ui
-        if(parent.document.getElementById('panel-body-main') == null){
+        if (parent.document.getElementById('panel-body-main') == null) {
             console.log('Se añade el script en la cabecera');
             document.write('<link href="assets/css/style.min.css" rel="stylesheet" type="text/css" />');
             document.write('<link href="assets/browser-components/bootstrap/css/bootstrap.css" rel="stylesheet">');
-            document.write('<script type="text/javascript" src="assets/js/jquery-1.11.3.min.js"></'+'script>');
-            document.write('<script type="text/javascript" src="assets/browser-components/jquery-ui/js/jquery-ui-1.10.0.min.js"></'+'script>');
-            document.write('<script type="text/javascript" src="assets/browser-components/bootstrap/js/bootstrap.js"></'+'script>');
-            document.write('<script src="assets/browser-components/jquery_confirm/jquery-confirm.min.js"></'+'script>');
-            document.write('<script type="text/javascript" src="assets/js/main.js"></'+'script>');
+            document.write('<script type="text/javascript" src="assets/js/jquery-1.11.3.min.js"></' + 'script>');
+            document.write('<script type="text/javascript" src="assets/browser-components/jquery-ui/js/jquery-ui-1.10.0.min.js"></' + 'script>');
+            document.write('<script type="text/javascript" src="assets/browser-components/bootstrap/js/bootstrap.js"></' + 'script>');
+            document.write('<script src="assets/browser-components/jquery_confirm/jquery-confirm.min.js"></' + 'script>');
+            document.write('<script type="text/javascript" src="assets/js/main.js"></' + 'script>');
         }
     </script>
     <script src="assets/browser-components/jquery_confirm/jquery-confirm.min.js"></script>
 
     <script type="text/javascript" src="assets/browser-components/ladda/js/spin.min.js"></script>
     <script type="text/javascript" src="assets/browser-components/ladda/js/ladda.min.js"></script>
-    <script type="text/javascript" src="assets/browser-components/mustache/mustache.min.js"></script>   
+    <script type="text/javascript" src="assets/browser-components/mustache/mustache.min.js"></script>
     <!-- bootstrap select -->
-    <link href="assets/browser-components/bootstrap-select/css/bootstrap-select.min.css" rel="stylesheet" type="text/css" />
+    <link href="assets/browser-components/bootstrap-select/css/bootstrap-select.min.css" rel="stylesheet"
+        type="text/css" />
     <script type="text/javascript" src="assets/browser-components/bootstrap-select/js/bootstrap-select.min.js"></script>
     <!-- date range -->
     <link href="assets/browser-components/daterangepicker/daterangepicker.css" rel="stylesheet" type="text/css" />
@@ -44,49 +47,59 @@
     <script type="text/javascript" src="assets/browser-components/loadingModal/js/jquery.loadingModal.js"></script>
     <link rel="stylesheet" type="text/css" href="assets/browser-components/loadingModal/css/jquery.loadingModal.css">
     <!-- ajax-select -->
-    <link href="assets/browser-components/ajax-select/css/ajax-bootstrap-select.min.css" rel="stylesheet" type="text/css" />
+    <link href="assets/browser-components/ajax-select/css/ajax-bootstrap-select.min.css" rel="stylesheet"
+        type="text/css" />
     <script type="text/javascript" src="assets/browser-components/ajax-select/js/ajax-bootstrap-select.min.js"></script>
-    <script type="text/javascript" src="assets/browser-components/ajax-select/js/locale/ajax-bootstrap-select.es-ES.min.js"></script>
+    <script type="text/javascript"
+        src="assets/browser-components/ajax-select/js/locale/ajax-bootstrap-select.es-ES.min.js"></script>
 
     <!-- Data Table -->
-    <link href="assets/browser-components/dataTables/DataTables-1.10.15/css/dataTables.bootstrap.min.css" rel="stylesheet" type="text/css" />
-    <script src="assets/browser-components/dataTables/DataTables-1.10.15/js/jquery.dataTables.min.js" type="text/javascript"></script>
+    <link href="assets/browser-components/dataTables/DataTables-1.10.15/css/dataTables.bootstrap.min.css"
+        rel="stylesheet" type="text/css" />
+    <script src="assets/browser-components/dataTables/DataTables-1.10.15/js/jquery.dataTables.min.js"
+        type="text/javascript"></script>
 
     <!-- Validate -->
     <script type="text/javascript" src="assets/browser-components/validate/jquery.form.min.js"></script>
     <script type="text/javascript" src="assets/browser-components/validate/jquery.validate.min.js"></script>
     <!-- jquery.jtable -->
     <script type="text/javascript" src="assets/browser-components/jquery-jtable/jquery.jtable.min.js"></script>
-    <script type="text/javascript" src="assets/browser-components/jquery-jtable/localization/jquery.jtable.es.js"></script>
+    <script type="text/javascript"
+        src="assets/browser-components/jquery-jtable/localization/jquery.jtable.es.js"></script>
     <script type="text/javascript" src="assets/js/config.js"></script>
     <!--*************** script *****************-->
     <!-- <script type="text/javascript" src="assets/browser-components/bootstrap/js/bootstrap.js"></script> -->
-    <script type="text/javascript"> 
+    <script type="text/javascript">
         var $getAppName = '<?php echo $obj->getAppName(); ?>';
         var maxDayToEdit = <?= $maximoDiasReprogramar; ?>;
     </script>
     <script type="text/javascript" src="assets/js/form-main.js"></script>
     <script type="text/javascript" src="assets/js/vacacion/main.js"></script>
     <style type="text/css">
-        .daterangepicker td.active, .daterangepicker td.active:hover{
+        .daterangepicker td.active,
+        .daterangepicker td.active:hover {
             background-color: #882132;
         }
-        .daterangepicker td.active.in-range{
+
+        .daterangepicker td.active.in-range {
             background-color: #882132;
         }
+
         .daterangepicker td.in-range {
             background-color: #f8ebeb;
         }
-        .weekend{
+
+        .weekend {
             font-weight: bold;
         }
     </style>
 </head>
+
 <body>
     <div class="container-fluid">
         <div class="row">
             <div class="panel panel-ac" style="margin-bottom:0px;">
-                <div class="panel-heading" id="panel_body_title"> 
+                <div class="panel-heading" id="panel_body_title">
                     <h3 class="panel-title text-center">Gestión de Solicitudes de vacaciones</h3>
                 </div>
             </div>
@@ -97,8 +110,8 @@
                             <label class="control-label">Empresa:</label>
                             <select name="qry_empresa" id="qry_empresa" class="form-control select-default-ac">
                                 <?php foreach ($cboEmpresa as $row): ?>
-                                <option value="<?= $row->CO_EMPR;?>"><?= $row->DE_NOMB;?></option>
-                                <?php endforeach;?>
+                                    <option value="<?= $row->CO_EMPR; ?>"><?= $row->DE_NOMB; ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
                         <div class="col-md-6 form-group">
@@ -120,23 +133,23 @@
                             </select>
                         </div>
                         <div class="col-sm-6 form-group">
-							<label class="control-label">Sección:</label>
-							<select name="qry_seccion" id="qry_seccion" class="form-control buscar">
-								<option value="0"> Seleccione </option>
-							</select>
-						</div>
+                            <label class="control-label">Sección:</label>
+                            <select name="qry_seccion" id="qry_seccion" class="form-control buscar">
+                                <option value="0"> Seleccione </option>
+                            </select>
+                        </div>
                         <div class="col-md-6 form-group">
                             <label class="control-label">Solicitante:</label>
                             <input align="center" type="text" id="qry_colaborador" class="form-control">
                         </div>
                         <div class="col-sm-6 form-group">
-							<label class="control-label">Fecha Inicio de Vacaciones:</label>
-							<div class="input-group">
-								<input type="text" class="form-control" id="qryFechaInicio" autocomplete="off">
-								<span class="input-group-addon">Hasta</span>
-								<input type="text" class="form-control" id="qryFechaFin" autocomplete="off">
-							</div>
-						</div>
+                            <label class="control-label">Fecha Inicio de Vacaciones:</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="qryFechaInicio" autocomplete="off">
+                                <span class="input-group-addon">Hasta</span>
+                                <input type="text" class="form-control" id="qryFechaFin" autocomplete="off">
+                            </div>
+                        </div>
                         <!-- <div class="col-md-6 form-group">
                             <label class="control-label">Rango Inicio Vacaciones:</label>
                             <div id="reportrange" style="background: #fff; cursor: pointer; padding: 5px 10px; border: 1px solid #ccc; width: 100%; margin-bottom: 5px;">
@@ -145,8 +158,10 @@
                             </div>
                         </div> -->
                         <div class="col-md-6 groupTogether">
-                            <button type="submit" id="LoadRecordsButton" class="btn btn-ac"><i class="glyphicon glyphicon-search"></i> Buscar</button>
-                            <button type="button" id="btnExportar" class="btn btn-ac"><i class="glyphicon glyphicon-cloud-download"></i> Exportar</button>
+                            <button type="submit" id="LoadRecordsButton" class="btn btn-ac"><i
+                                    class="glyphicon glyphicon-search"></i> Buscar</button>
+                            <button type="button" id="btnExportar" class="btn btn-ac"><i
+                                    class="glyphicon glyphicon-cloud-download"></i> Exportar</button>
                         </div>
                     </div>
                 </form>
@@ -156,7 +171,8 @@
     </div>
 
     <!-- Modal Gestion de Formulario -->
-    <div class="modal fade" id="modalForm" tabindex="-1" role="dialog" aria-labelledby="modalFrameLabel" aria-hidden="true">
+    <div class="modal fade" id="modalForm" tabindex="-1" role="dialog" aria-labelledby="modalFrameLabel"
+        aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
             </div><!-- /.modal-content -->
@@ -267,31 +283,31 @@
                     </div>
 
                     <div class="col-md-4">
-						<div class="form-group">
-							<label class="col-md-4 control-label">Fch. Inicio:</label>
-							<div class="col-md-8">
-								<div class='input-group' id="divFechaInicio">
-									<input class="form-control" type="text" name="txtFechaInicio" id="txtFechaInicio" value="{{val_fecha_inicio}}" readonly="readonly"/>
-									<span class="input-group-addon">
-										<span class="glyphicon glyphicon-calendar"></span>
-									</span>
-								</div>
-							</div>
-						</div>
-					</div>
-					<div class="col-md-4">
-						<div class="form-group">
-							<label class="col-md-4 control-label">Fch. Fin:</label>
-							<div class="col-md-8">
-								<div class='input-group' id="divFechaFin">
-									<input class="form-control" type="text" name="txtFechaFin" id="txtFechaFin" value="{{val_fecha_fin}}" readonly="readonly"/>
-									<span class="input-group-addon">
-										<span class="glyphicon glyphicon-calendar"></span>
-									</span>
-								</div>
-							</div>
-						</div>
-					</div>
+                        <div class="form-group">
+                            <label class="col-md-4 control-label">Fch. Inicio:</label>
+                            <div class="col-md-8">
+                                <div class='input-group' id="divFechaInicio">
+                                    <input class="form-control" type="text" name="txtFechaInicio" id="txtFechaInicio" value="{{val_fecha_inicio}}" readonly="readonly"/>
+                                    <span class="input-group-addon">
+                                        <span class="glyphicon glyphicon-calendar"></span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label class="col-md-4 control-label">Fch. Fin:</label>
+                            <div class="col-md-8">
+                                <div class='input-group' id="divFechaFin">
+                                    <input class="form-control" type="text" name="txtFechaFin" id="txtFechaFin" value="{{val_fecha_fin}}" readonly="readonly"/>
+                                    <span class="input-group-addon">
+                                        <span class="glyphicon glyphicon-calendar"></span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <div class="col-md-12">
                         <div class="alert alert-info ac-alert-info" role="alert">
                             <i class="glyphicon glyphicon-question-sign"></i> Fecha de Inicio y fin de Vacación (no incluir fecha de reingreso)
@@ -352,4 +368,5 @@
         </form>
     </script>
 </body>
+
 </html>

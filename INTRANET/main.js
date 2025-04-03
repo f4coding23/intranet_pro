@@ -454,17 +454,23 @@ $(function () {
           var estadosEliminarPropio = [1, 2, 3, 4];
           var dateInicio = moment(data.record.fecha_inicio.date);
           var diferenciaDias = dateInicio.diff(moment().startOf("day"), "days");
-
           //editar
           if (
             estadosEdit.includes(data.record.id_vaca_estado) &&
             diferenciaDias > maxDayToEdit &&
-            data.record.own
+            data.record.own &&
+            data.record.id_vaca_condicion != 3 // No se pueden editar las vacaciones coordinadas
           ) {
             btnEditar = $(
               '<button class="btn btn-ac btn-xs" title="Editar"><i class="fa fa-pencil"></i></button>'
             );
             btnEditar.click(function () {
+              if (data.record.id_vaca_condicion == 3) {
+                showConfirmWarning(
+                  "No se puede editar solicitudes con esta condición"
+                );
+                return;
+              }
               loading(true, "Obteniendo información");
 
               $.post(
@@ -472,6 +478,7 @@ $(function () {
                 { idSolicitante: data.record.id_solicitante },
                 function (result) {
                   loading(false);
+                  console.log(result);
 
                   var template = $("#tplFrmModal").html();
                   Mustache.parse(template); // optional, speeds up future uses
@@ -481,6 +488,7 @@ $(function () {
                     generador: result.generador,
                     edit: true,
                     val_id_vacacion: data.record.id_vacacion,
+                    // readonly_condicion: "disabled",
                     listCondicion: result.cboCondicion,
                     sel_condicion: function () {
                       return this.id_vaca_condicion ==
@@ -914,22 +922,20 @@ function setFunctionFormulario(editar, fechaInicio, fechaFin) {
   tblConsolidado.on("xhr", function (e, settings, json) {
     if (json.data.length > 0) {
       var datosIniciales = json.data[0]; // Captura la primera fila
-  
+
       var truncas = parseFloat(datosIniciales.trunco) || 0;
       var pendientes = parseFloat(datosIniciales.ganado) || 0;
       var vencidas = parseFloat(datosIniciales.vencido) || 0;
       var programadas = parseFloat(datosIniciales.programado) || 0;
 
       if (programadosPrevios == null || programadosPrevios == 0) {
-        programadosPrevios = (programadas);
+        programadosPrevios = programadas;
         $("#programadosPrevios").val(programadosPrevios);
-
       } else {
-        console.log("No entró en el if. Valor actual:", programadosPrevios);
+        console.error("No entró en el if. Valor actual:", programadosPrevios);
       }
     }
   });
-  
 
   tbldetalleconsolidado = $("#tbldetalleconsolidado").DataTable({
     searching: false,
@@ -1227,14 +1233,13 @@ function validarTiempo(fechaInicio, fechaFin) {
   var regConsolidado = tblConsolidado.row(0).data();
   var disponible = 0;
 
-  if(pendientesPrevios == 0) {
+  if (pendientesPrevios == 0) {
     pendientesPrevios = Math.max(
       0,
       (parseFloat(regConsolidado.vencido) || 0) +
         (parseFloat(regConsolidado.ganado) || 0) -
         (parseFloat(regConsolidado.programado) || 0)
     );
-    
   }
 
   $("#txtCantidadDias").val(numDias);
@@ -1246,9 +1251,10 @@ function validarTiempo(fechaInicio, fechaFin) {
     if (
       Math.max(
         0,
-        ((parseFloat(regConsolidado.vencido) || 0) +
-          (parseFloat(regConsolidado.ganado) || 0)) -
-          programadosPrevios ) > 0
+        (parseFloat(regConsolidado.vencido) || 0) +
+          (parseFloat(regConsolidado.ganado) || 0) -
+          programadosPrevios
+      ) > 0
     ) {
       showConfirmWarning(
         "No puede seleccionar adelanto a cuenta de vacaciones truncas, si dispone de vacaciones vencidas o pendientes."

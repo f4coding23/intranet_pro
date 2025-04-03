@@ -342,26 +342,26 @@ class VacacionModel extends ModelBase
     }
 
     /******************************************* CREACION DE SOLICITUD DE VACACIONES *********************************************/
-    public function createVacacion($reg, $id_vacacion_especial)
+    public function createVacacion($reg)
     {
-
         $resultado = array('status' => false, 'mensaje' => '');
         $tblConsolidado = (array) json_decode($reg['tblConsolidado']);
-
-        /*$distribucion = $this->_armarDistribucion($reg['cboSolicitante'],$tblConsolidado['trunco'],$reg['cboCondicion'],$reg['txtFechaInicio'],$reg['txtFechaFin']);
-
-        if(!$distribucion['status']){
-            $resultado['mensaje'] = $distribucion['mensaje'];
-            return $resultado;
-        }*/
 
         //Iniciamos la Conexión y la transacción
         $this->getInstaceTransac();
         $this->intra_trans->Conectar(true);
         $this->intra_trans->iniciarTransaccion();
 
-        $this->idVacacion = $this->_insertarSolicitudVacacion($reg, $reg['modalidad'], $id_vacacion_especial);
-        //$this->_insertarDistribucion($this->idVacacion,$distribucion['resultado']);
+        $resultadoInsercion = $this->_insertarSolicitudVacacion($reg, $reg['modalidad']);
+        if (!$resultadoInsercion['status']) {
+            $this->intra_trans->rollbackTransaccion();
+            $this->intra_trans->Desconectar();
+
+            $resultado['mensaje'] = $resultadoInsercion['mensaje'];
+            return $resultado;
+        }
+
+        $this->idVacacion = $resultadoInsercion['id_vacacion'];
 
         $this->intra_trans->commitTransaccion();
         $this->intra_trans->Desconectar();
@@ -374,14 +374,14 @@ class VacacionModel extends ModelBase
 
         $resultado['status'] = true;
         $resultado['id'] = $this->idVacacion;
+        $resultado['mensaje'] = $resultadoInsercion['mensaje']; // Incluir el mensaje de éxito
         return $resultado;
     }
-
-    private function _insertarSolicitudVacacion($reg, $modalidad = 1, $id_vacacion_especial)
+    private function _insertarSolicitudVacacion($reg, $modalidad = 1)
     {
-
         $dateFormat = DateTime::createFromFormat('d/m/Y', $reg['txtFechaIngreso']);
         $fechaIngreso = $dateFormat->format('Y-m-d');
+        $resultado = array('status' => false, 'mensaje' => '');
 
         switch ($modalidad) {
             case 1:
@@ -417,40 +417,39 @@ class VacacionModel extends ModelBase
                 break;
         }
 
+        $esFechaEpecial = $this->getFechaEspecial($reg['txtFechaInicio'], $reg['txtFechaFin'], $userInfo[0]->ID_USUARIO);
+        // var_dump($esFechaEpecial);
+        // die();
         $infoSucursal = $this->sessionObj->getInfoFromSucursalByEmpresa($userInfoOfisis[0]->CO_EMPR, 1);
-        $periodoActual = $this->_obtenerPeriodo($userInfo[0]->ID_USUARIO);
+        //aquí obtenemos el periodo del cual dispones días de vacaciones
+        $periodoActual = $this->_obtenerPeriodoActual($userInfo[0]->DNI);
+        // var_dump($periodoActual);
+        // die();
 
-        $diasTipoActual = $this->_sumarDiasPorTipo($reg['txtFechaInicio'], $reg['txtFechaFin']);
-        $diasNoLaborables = $diasTipoActual['no_habil'];
-        $diasLaborables = $diasTipoActual['habil'];
-        $idVacacionEspecial = isset($id_vacacion_especial) ? $id_vacacion_especial : null;
-        $numSolicitud = $this->_obtenerNumeroSolicitud($userInfo[0]->ID_USUARIO, $periodoActual[0]->periodo);
-        $diasPrimerSubPeriodo = $this->_obtenerDiasConsumidosPeriodo($userInfo[0]->ID_USUARIO, $periodoActual[0]->periodo, 1);
-        $diasSegundoSubPeriodo = $this->_obtenerDiasConsumidosPeriodo($userInfo[0]->ID_USUARIO, $periodoActual[0]->periodo, 2);
+        $validacionIntegral = $this->determinarYValidarSolicitud(
+            $userInfo[0]->ID_USUARIO,
+            $periodoActual['periodo'],
+            $reg['txtFechaInicio'],
+            $reg['txtFechaFin'],
+            $reg['txtCantidadDias'],
+            $userInfoOfisis[0]->CO_EMPR,
+            $reg['cboCondicion']
+        );
+        // var_dump($validacionIntegral);
+        // die();
 
-        if ($idVacacionEspecial != null) {
-            $diasSubPeriodoUno = 0;
-            $diasSubPeriodoDos = $reg['txtCantidadDias'];
-        } else {
-            // Calcular cuántos días faltan en cada subperiodo
-            $diasDisponiblesSubPeriodoUno = max(15 - $diasPrimerSubPeriodo[0]->dias_consumidos, 0);
-            $diasDisponiblesSubPeriodoDos = max(15 - $diasSegundoSubPeriodo[0]->dias_consumidos, 0);
-
-            if ($numSolicitud == 1) {
-                // Primera solicitud: asignar hasta 15 días al subperiodo 1, el resto al subperiodo 2
-                $diasSubPeriodoUno = min($reg['txtCantidadDias'], 15);
-                $diasSubPeriodoDos = max($reg['txtCantidadDias'] - $diasSubPeriodoUno, 0);
-            } elseif ($numSolicitud == 2) {
-                // Segunda solicitud: completar subperiodo 1 primero, luego subperiodo 2
-                $diasSubPeriodoUno = min($reg['txtCantidadDias'], $diasDisponiblesSubPeriodoUno);
-                $diasSubPeriodoDos = max($reg['txtCantidadDias'] - $diasSubPeriodoUno, 0);
-            } elseif ($numSolicitud == 3) {
-                // Tercera solicitud: asignar todo al subperiodo 2, hasta un máximo de 15 días
-                $diasSubPeriodoUno = 0;
-                $diasSubPeriodoDos = min($reg['txtCantidadDias'], $diasDisponiblesSubPeriodoDos);
-            }
+        if (!$validacionIntegral['es_valido']) {
+            $resultado['mensaje'] = $validacionIntegral['mensaje'];
+            return $resultado;
         }
 
+        // Obtenemos el subperíodo asignado
+        $subperiodoDestino = $validacionIntegral['subperiodo'];
+        $idVacacionEspecial = isset($validacionIntegral['id_vacacion_especial']) ? $validacionIntegral['id_vacacion_especial'] : null;
+        // reemplazar por lo de validacionintegral
+        //$idVacacionEspecial = isset($esFechaEpecial[0]->id_vaca_especial) ? $esFechaEpecial[0]->id_vaca_especial : null;
+
+        $idVacacion = 0;
 
         $params = array(
             array($userInfoOfisis[0]->CO_EMPR, SQLSRV_PARAM_IN),
@@ -470,19 +469,26 @@ class VacacionModel extends ModelBase
             array($reg['txtCantidadDias'], SQLSRV_PARAM_IN),
             array($confirmado, SQLSRV_PARAM_IN),
             array($idGenerador, SQLSRV_PARAM_IN),
-            array($periodoActual[0]->periodo, SQLSRV_PARAM_IN),
-            array($diasSubPeriodoUno, SQLSRV_PARAM_IN),
-            array($diasSubPeriodoDos, SQLSRV_PARAM_IN),
             array($idVacacionEspecial, SQLSRV_PARAM_IN),
-            array($diasNoLaborables, SQLSRV_PARAM_IN),
-            array($diasLaborables, SQLSRV_PARAM_IN)
+            array($periodoActual['periodo'], SQLSRV_PARAM_IN),
+            array($subperiodoDestino, SQLSRV_PARAM_IN),
+            array(&$idVacacion, SQLSRV_PARAM_OUT) // Parámetro de salida para el ID
         );
 
-        $sqlQuery = "{CALL SPU_CREATE_VACACION_PERIODO(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)}";
+        $sqlQuery = "{CALL SPU_CREATE_VACACION_PERIODO(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)}";
+        // print_r($params);
+        // die();
+        $result = $this->intra_db->CallSP4($sqlQuery, $params);
+        if ($result) {
+            $resultado['status'] = true;
+            $resultado['id_vacacion'] = $idVacacion;
+            $resultado['mensaje'] = "Solicitud de vacaciones registrada correctamente.";
+        } else {
+            $resultado['mensaje'] = "Error al registrar la solicitud de vacaciones.";
+        }
+        return $resultado;
 
-        $this->intra_db->CallSP($sqlQuery, $params);
     }
-
     private function _insertarDistribucion($idVacacion, $distribuciones)
     {
 
@@ -508,7 +514,6 @@ class VacacionModel extends ModelBase
             }
         }
     }
-
     private function _armarDistribucion($idSolicitante, $trunco, $condicion, $fechaInicio, $fechaFin, $idSolicitud = 0)
     {
         $resultado = array('status' => false, 'mensaje' => '');
@@ -673,7 +678,6 @@ class VacacionModel extends ModelBase
 
         return $resultado;
     }
-
     public function getVacacionesPendientes($idSolicitante, $trunco, $condicion, $idSolicitud = 0)
     {
         $userInfo = $this->sessionObj->getUserInfo($idSolicitante);
@@ -753,7 +757,6 @@ class VacacionModel extends ModelBase
 
         return $totalDisponible;
     }
-
     private function _getRangeDates($fechaInicio, $fechaFin)
     {
         $begin = new DateTime($fechaInicio);
@@ -769,7 +772,6 @@ class VacacionModel extends ModelBase
         }
         return $range;
     }
-
     public function _sumarDiasPorTipo($fechaInicio, $fechaFin)
     {
         $response = array('habil' => 0, 'no_habil' => 0);
@@ -792,7 +794,6 @@ class VacacionModel extends ModelBase
 
         return $response;
     }
-
     private function _getFormatDiasSemanaNoLaborable()
     {
         $arrIndicesNoLaborables = array();
@@ -804,7 +805,6 @@ class VacacionModel extends ModelBase
 
         return $arrIndicesNoLaborables;
     }
-
     private function _getDiasSemanaNoLaborables()
     {
         $this->intra_db->usarUTF8();
@@ -815,7 +815,6 @@ class VacacionModel extends ModelBase
         $qryResult = $this->intra_db->Listar();
         return $qryResult;
     }
-
     private function _getDetallePeriodos($cod_trab, $cod_empr, $fecha_corte, $truncas)
     {
         $params = array(
@@ -825,11 +824,10 @@ class VacacionModel extends ModelBase
             array($truncas, SQLSRV_PARAM_IN)
         );
 
-        $sqlQuery = "{CALL USP_VACA_PERIODO_OPTIMIZADO(?,?,?,?)}";
+        $sqlQuery = "{CALL USP_VACA_PERIODO(?,?,?,?)}";
         $qryResult = $this->intra_db->CallSPWithResult($sqlQuery, $params);
         return $qryResult;
     }
-
     private function _formatPeriodosByCondicion($periodos, $condicion)
     {
         $arrPeriodos = array();
@@ -848,7 +846,6 @@ class VacacionModel extends ModelBase
 
         return $arrPeriodos;
     }
-
     private function _getDetalleVacaciones($cod_trab, $cod_empr, $periodo, $fecha_corte)
     {
         $this->intra_db->usarUTF8();
@@ -862,7 +859,6 @@ class VacacionModel extends ModelBase
         $qryResult = $this->intra_db->Listar();
         return $qryResult;
     }
-
     private function _getUserFromOfisis($co_trab)
     {
         $this->intra_db->usarUTF8();
@@ -872,7 +868,6 @@ class VacacionModel extends ModelBase
         $qryResult = $this->intra_db->Listar();
         return $qryResult;
     }
-
     private function _getDistribucionActiva($periodo, $solicitante, $idVacacion = 0)
     {
         $this->intra_db->setCampos("periodo, id_vaca_condicion, SUM(num_dias_total) 'total', SUM(num_dias_habil) 'habil', SUM(num_dias_no_habil) 'no_habil'");
@@ -891,7 +886,6 @@ class VacacionModel extends ModelBase
         $qryResult = $this->intra_db->Listar();
         return $qryResult;
     }
-
     private function _proccessMailMaster($regVacacion)
     {
         $config = Config::singleton();
@@ -941,7 +935,6 @@ class VacacionModel extends ModelBase
 
         $this->_sendEmail($para, $copia, $asunto, $mensaje);
     }
-
     private function _getNotificados($accion, $envio, $idGerencia)
     {
         $this->intra_db->setCampos('C.USUINIDUSUARIO, S.USUVCNOUSUARIO, S.USUVCTXMAIL, C.tipoEnvio, CO_UNID');
@@ -955,7 +948,6 @@ class VacacionModel extends ModelBase
         $qryResult = $this->intra_db->Listar();
         return $qryResult;
     }
-
     private function _convertCadena($reg)
     {
         $cadena = '';
@@ -970,7 +962,6 @@ class VacacionModel extends ModelBase
 
         return $cadena;
     }
-
     private function _sendEmail($para, $copia, $asunto, $mensaje)
     {
         $params = array(
@@ -1017,7 +1008,6 @@ class VacacionModel extends ModelBase
         $resultado['id'] = $this->idVacacion;
         return $resultado;
     }
-
     private function _modificarSolicitudVacacion($reg, $modalidad = 1)
     {
         $regSolicitud = $this->getInfoVacacion($reg['idSolicitud']);
@@ -1076,21 +1066,19 @@ class VacacionModel extends ModelBase
         [usu_modi] = " . $userInfo[0]->ID_USUARIO . ",
         [fecha_modi] = GETDATE()
         WHERE  id_vacacion = " . $reg['idSolicitud'] . ";";
+
         return $this->intra_trans->DoUpdate($sqlQuery);
     }
-
     private function _eliminarDistribucionActual($idSolicitud)
     {
         $sqlQuery = "DELETE FROM TBINT_VACA_DISTRIBUCION WHERE id_vacacion = $idSolicitud;";
         $this->intra_trans->Ejecutar($sqlQuery);
     }
-
     private function _eliminarAutorizaciones($idSolicitud)
     {
         $sqlQuery = "DELETE FROM TBINT_VACA_AUT WHERE id_vacacion = $idSolicitud;";
         $this->intra_trans->Ejecutar($sqlQuery);
     }
-
     /****************************************** CONFIRMACION Y AUTORIZACIONES  **************************************************/
     public function confirmSolicitudVacacion($idVacacion)
     {
@@ -1148,7 +1136,6 @@ class VacacionModel extends ModelBase
         $sqlQuery = "{CALL SPU_ELIMINA_VACACION_PERIODO(?,?)}";
         $this->intra_db->CallSP($sqlQuery, $params);
     }
-
     public function eliminarLogicoRange()
     {
         $userInfo = $this->sessionObj->getUserInfo();
@@ -1159,7 +1146,6 @@ class VacacionModel extends ModelBase
         WHERE  [fecha_inicio] >= '" . date('Y-m-d') . "';";
         return $this->intra_db->DoUpdate($sqlQuery);
     }
-
     public function confirmEjecuciónVacacion($idVacacion)
     {
         $userInfo = $this->sessionObj->getUserInfo();
@@ -1170,7 +1156,6 @@ class VacacionModel extends ModelBase
         WHERE  id_vacacion = {$idVacacion};";
         return $this->intra_db->DoUpdate($sqlQuery);
     }
-
     public function getPendientesEjecucion($idGerencia = 0)
     {
         $this->intra_db->setCampos('id_unidad,gerencia,area,seccion,dni,id_solicitante,solicitante,vaca_condicion,fecha_inicio,fecha_fin,num_dias');
@@ -1183,7 +1168,6 @@ class VacacionModel extends ModelBase
         $qryResult = $this->intra_db->Listar();
         return $qryResult;
     }
-
     public function proccessMailPendienteEjecucion($regVacacion)
     {
         $config = Config::singleton();
@@ -1226,7 +1210,6 @@ class VacacionModel extends ModelBase
 
         $this->_sendEmail($para, '', $asunto, $mensaje);
     }
-
     public function processMailPendienteEjecucionGerencia($solicitudes)
     {
         $config = Config::singleton();
@@ -1285,7 +1268,6 @@ class VacacionModel extends ModelBase
 
         $this->_sendEmail($para, $copia, $asunto, $mensaje);
     }
-
     public function listCronograma($qry_empresa, $qry_gerencia, $qryDepartamento, $qry_area, $qry_seccion, $qry_estado, $qry_colaborador, $qry_ini_rango, $qry_fin_rango, $dnis = '')
     {
         $colaborador = '';
@@ -1317,7 +1299,6 @@ class VacacionModel extends ModelBase
         $demo = $this->intra_db->CallSPWithResult($sqlQuery, $params);
         return $demo;
     }
-
     public function procesarSincronizacion()
     {
         $incidencias = array();
@@ -1372,7 +1353,6 @@ class VacacionModel extends ModelBase
             $this->_notificarIncidencias($incidencias);
         }
     }
-
     private function _obtenerVacacionesActuales()
     {
         $this->ofisis_db->usarUTF8();
@@ -1384,7 +1364,6 @@ class VacacionModel extends ModelBase
         $qryResult = $this->ofisis_db->Listar();
         return $qryResult;
     }
-
     private function _obtenerVacacionesSinCodigo()
     {
         $this->ofisis_db->usarUTF8();
@@ -1396,7 +1375,6 @@ class VacacionModel extends ModelBase
         $qryResult = $this->ofisis_db->Listar();
         return $qryResult;
     }
-
     private function _actualizarInicioFinSolicitud($idSolicitud, $inicio, $fin)
     {
         $sqlQuery = "UPDATE TBINT_VACACIONES SET
@@ -1407,7 +1385,6 @@ class VacacionModel extends ModelBase
         WHERE  id_vacacion = " . $idSolicitud . ";";
         return $this->intra_db->DoUpdate($sqlQuery);
     }
-
     private function _actualizarEstadoFinal($idSolicitud)
     {
         $sqlQuery = "UPDATE TBINT_VACACIONES SET
@@ -1417,7 +1394,6 @@ class VacacionModel extends ModelBase
         WHERE  id_vacacion = " . $idSolicitud . ";";
         return $this->intra_db->DoUpdate($sqlQuery);
     }
-
     private function _notificarIncidencias($incidencias)
     {
         $config = Config::singleton();
@@ -1465,7 +1441,6 @@ class VacacionModel extends ModelBase
 
         $this->_sendEmail($para, $copia, $asunto, $mensaje);
     }
-
     private function _getNotificacion($accion, $envio)
     {
         $this->intra_db->usarUTF8();
@@ -1477,7 +1452,6 @@ class VacacionModel extends ModelBase
         $qryResult = $this->intra_db->Listar();
         return $qryResult;
     }
-
     private function _convertCadenaNotificadores($reg)
     {
         $cadena = '';
@@ -1492,7 +1466,6 @@ class VacacionModel extends ModelBase
 
         return $cadena;
     }
-
     public function listarCondicionComboEspecial($id_solicitante)
     {
         $this->intra_db->usarUTF8();
@@ -1520,7 +1493,6 @@ class VacacionModel extends ModelBase
 
         return $this->intra_db->Consulta($sql);
     }
-
     public function getFechaEspecial($fechaInicio, $fechaFin, $idSolicitante)
     {
         $this->intra_db->usarUTF8();
@@ -1533,172 +1505,737 @@ class VacacionModel extends ModelBase
         $qryResult = $this->intra_db->Listar();
         return $qryResult;
     }
+    // public function _obtenerPeriodoActual($dni)
+    // {
+    //     // Preparar variables
+    //     $fechaCorte = date('Y-m-d');
+    //     $filtroTrabajador = "AND TE.CO_TRAB IN ('" . $dni . "')";
 
-    public function _obtenerNumeroSolicitud($idSolicitante, $periodo)
-    {
-        $this->intra_db->setCampos("COUNT(*) as num_solicitudes");
-        $this->intra_db->setTabla(array('DT' => 'TBINT_VACA_DETALLE_DISTRIBUCION_PERIODO'));
-        $this->intra_db->setJoin(array('DP' => 'TBINT_VACA_DISTRIBUCION_PERIODO'), 'DP.id_vaca_distribucion_periodo = DT.id_vaca_distribucion_periodo', 'INNER');
-        $this->intra_db->setJoin(array('V' => 'TBINT_VACACIONES'), 'V.id_vacacion = DT.id_vacacion', 'INNER');
-        $this->intra_db->setCondicion("=", "DP.periodo", $periodo);
-        $this->intra_db->setCondicion("IS NULL", "V.id_vaca_especial", NULL);
-        $this->intra_db->setCondicion("=", "DP.id_solicitante", $idSolicitante);
-        $this->intra_db->setCondicion("=", "V.eliminado", 0);
-        $result = $this->intra_db->Listar();
+    //     // Parámetros para el stored procedure
+    //     $params = array(
+    //         array('REM', SQLSRV_PARAM_IN),              // @ISTI_VACA
+    //         array('OFISIS', SQLSRV_PARAM_IN),           // @ISCO_GRUP
+    //         array($fechaCorte, SQLSRV_PARAM_IN),        // @IDFE_CORT
+    //         array('AND TE.CO_EMPR = 01', SQLSRV_PARAM_IN), // @ISCO_WHE1
+    //         array('', SQLSRV_PARAM_IN),                 // @ISCO_WHE2
+    //         array($filtroTrabajador, SQLSRV_PARAM_IN),  // @ISCO_WHE3
+    //         array('', SQLSRV_PARAM_IN),                 // @ISCO_WHE4
+    //         array('', SQLSRV_PARAM_IN),                 // @ISCO_WHE5
+    //         array('N', SQLSRV_PARAM_IN)                 // @ISST_VALO_VACA
+    //     );
 
-        return isset($result[0]->num_solicitudes) ? $result[0]->num_solicitudes + 1 : 1;
+    //     // Ejecutar el stored procedure
+    //     $sqlQuery = "{CALL dbo.USP_VACA_INTRANET_MEJORADO(?,?,?,?,?,?,?,?,?)}";
+    //     $resultados = $this->intra_db->CallSPWithResult($sqlQuery, $params);
+
+    //     // Variables para almacenar el resultado
+    //     $periodoMenor = null;
+    //     $infoCompleta = null;
+
+    //     if (!empty($resultados)) {
+    //         // Filtrar solo periodos con días pendientes mayores a cero
+    //         $periodosConDias = array_filter($resultados, function ($item) {
+    //             return floatval($item->DIAS_PEND) > 0;
+    //         });
+
+    //         if (!empty($periodosConDias)) {
+    //             // Ordenar los periodos por fecha (del más antiguo al más reciente)
+    //             usort($periodosConDias, function ($a, $b) {
+    //                 return strcmp($a->PERIODO, $b->PERIODO);
+    //             });
+
+    //             // El primer periodo después de ordenar será el más antiguo con días disponibles
+    //             $periodoMenor = $periodosConDias[0]->PERIODO;
+    //             $infoCompleta = $periodosConDias[0];
+    //         }
+    //     }
+
+    //     // Puedes retornar solo el periodo o un objeto con toda la información
+    //     return [
+    //         'periodo' => $periodoMenor,
+    //         'info' => $infoCompleta
+    //     ];
+    // }
+
+    public function _obtenerPeriodoActual($dni)
+{
+    // Preparar variables
+    $fechaCorte = date('Y-m-d');
+    $filtroTrabajador = "AND TE.CO_TRAB IN ('" . $dni . "')";
+
+    // Parámetros para el stored procedure
+    $params = array(
+        array('REM', SQLSRV_PARAM_IN),              // @ISTI_VACA
+        array('OFISIS', SQLSRV_PARAM_IN),           // @ISCO_GRUP
+        array($fechaCorte, SQLSRV_PARAM_IN),        // @IDFE_CORT
+        array('AND TE.CO_EMPR = 01', SQLSRV_PARAM_IN), // @ISCO_WHE1
+        array('', SQLSRV_PARAM_IN),                 // @ISCO_WHE2
+        array($filtroTrabajador, SQLSRV_PARAM_IN),  // @ISCO_WHE3
+        array('', SQLSRV_PARAM_IN),                 // @ISCO_WHE4
+        array('', SQLSRV_PARAM_IN),                 // @ISCO_WHE5
+        array('N', SQLSRV_PARAM_IN)                 // @ISST_VALO_VACA
+    );
+
+    // Ejecutar el stored procedure
+    $sqlQuery = "{CALL dbo.USP_VACA_INTRANET_MEJORADO(?,?,?,?,?,?,?,?,?)}";
+    $resultados = $this->intra_db->CallSPWithResult($sqlQuery, $params);
+
+    // Variables para almacenar el resultado
+    $periodoMenor = null;
+    $infoCompleta = null;
+
+    if (!empty($resultados)) {
+        // Filtrar solo periodos con días pendientes mayores a cero
+        $periodosConDias = array_filter($resultados, function ($item) {
+            return floatval($item->DIAS_PEND) > 0;
+        });
+
+        if (!empty($periodosConDias)) {
+            // Ordenar los periodos por fecha (del más antiguo al más reciente)
+            usort($periodosConDias, function ($a, $b) {
+                return strcmp($a->PERIODO, $b->PERIODO);
+            });
+
+            // Evaluar cada periodo para determinar si sus días programados completan los días pendientes
+            foreach ($periodosConDias as $periodo) {
+                // Consultar días programados para este período
+                $diasProgramados = $this->_consultarDiasProgramados($dni, $periodo->PERIODO);
+
+                // Si los días programados son menores a los días pendientes, este es el período actual
+                if ($diasProgramados['HABIL'] + $diasProgramados['NO_HABIL'] < $periodo->DIAS_PEND) {
+                    $periodoMenor = $periodo->PERIODO;
+                    $infoCompleta = $periodo;
+                    break;
+                }
+            }
+
+            // Si no se encontró un período con días incompletos, tomar el primer período
+            if ($periodoMenor === null) {
+                $periodoMenor = $periodosConDias[0]->PERIODO;
+                $infoCompleta = $periodosConDias[0];
+            }
+        }
     }
 
-    public function _obtenerPeriodo($idSolicitante)
-    {
-        $this->intra_db->setCampos("TOP 1 periodo");
-        $this->intra_db->setTabla("TBINT_VACA_DISTRIBUCION_PERIODO");
-        $this->intra_db->setCondicion("=", "id_solicitante ", $idSolicitante);
-        $this->intra_db->setCondicionString('(subperiodo_uno + subperiodo_dos) < cantidad_dias');
-        $this->intra_db->setOrden("periodo ASC");
-        return $result = $this->intra_db->Listar();
+    // Retornar el período y su información
+    return [
+        'periodo' => $periodoMenor,
+        'info' => $infoCompleta
+    ];
+}
+
+// Método auxiliar para consultar días programados
+private function _consultarDiasProgramados($dni, $periodo)
+{
+    $this->intra_db->setCampos("sum(num_dias - dbo.FUNC_NUM_DAYS_NO_HABIL(id_empresa,id_sucursal,fecha_inicio,fecha_fin)) AS HABIL, sum(dbo.FUNC_NUM_DAYS_NO_HABIL(id_empresa,id_sucursal,fecha_inicio,fecha_fin)) AS NO_HABIL");
+    $this->intra_db->setTabla("TBINT_VACACIONES");
+    $this->intra_db->setCondicionString("id_solicitante = (SELECT USUINIDUSUARIO FROM [DBACINHOUSE_TEST].[dbo].[TBSEGMAEUSUARIO] WHERE USUVCDNI = '$dni') AND periodo = '$periodo' AND id_empresa = '01' AND id_sucursal = '01' AND eliminado = 0 AND subperiodo in (1,2)");
+    
+    $resultado = $this->intra_db->Listar();
+
+    // Si no hay resultado, devolver un array con ceros
+    if (empty($resultado)) {
+        return [
+            'HABIL' => 0, 
+            'NO_HABIL' => 0
+        ];
     }
 
-    /**
-     * Obtiene los días ya consumidos en un subperiodo específico
-     * @param int $idSolicitante ID del solicitante
-     * @param string $periodo Período (ej: 2024-2025)
-     * @param int $subperiodo Número de subperiodo (1 o 2)
-     * @return array Información de días consumidos
-     */
-    public function _obtenerDiasConsumidosPeriodo($idSolicitante, $periodo, $subperiodo)
+    // Devolver el primer resultado
+    return [
+        'HABIL' => $resultado[0]->HABIL ?? 0, 
+        'NO_HABIL' => $resultado[0]->NO_HABIL ?? 0
+    ];
+}
+
+
+    public function _obtenerCantidadDiasPeriodo($idSolicitante)
     {
-        $field = ($subperiodo == 1) ? "subperiodo_uno" : "subperiodo_dos";
-
-        $this->intra_db->setCampos("SUM($field) as dias_consumidos");
-        $this->intra_db->setTabla("TBINT_VACA_DISTRIBUCION_PERIODO");
-        $this->intra_db->setCondicion("=", "id_solicitante", $idSolicitante);
-        $this->intra_db->setCondicion("=", "periodo", $periodo);
-
-        $qryResult = $this->intra_db->Listar();
-        return $qryResult;
-    }
-
-    public function _obtenerDiasRestantesDelPeriodo($idSolicitante, $periodo)
-    {
-        $this->intra_db->setCampos("cantidad_dias");
-        $this->intra_db->setTabla("TBINT_VACA_DISTRIBUCION_PERIODO");
-        $this->intra_db->setCondicion("=", "id_solicitante", $idSolicitante);
-        $this->intra_db->setCondicion("=", "periodo", $periodo);
-
-        $qryResult = $this->intra_db->Listar();
-        return $qryResult;
-    }
-
-    public function _obtenerDiasConsumidosPeriodoNoHabil($idSolicitante, $periodo)
-    {
-
-        $this->intra_db->setCampos("num_dias_no_habil as dias_consumidos_no_habil");
-        $this->intra_db->setTabla("TBINT_VACA_DISTRIBUCION_PERIODO");
-        $this->intra_db->setCondicion("=", "id_solicitante", $idSolicitante);
-        $this->intra_db->setCondicion("=", "periodo", $periodo);
-
-        $qryResult = $this->intra_db->Listar();
-        return $qryResult;
-    }
-
-    public function _obtenerDiasConsumidosPeriodoHabil($idSolicitante, $periodo)
-    {
-
-        $this->intra_db->setCampos("num_dias_habil as dias_consumidos_habil");
-        $this->intra_db->setTabla("TBINT_VACA_DISTRIBUCION_PERIODO");
-        $this->intra_db->setCondicion("=", "id_solicitante", $idSolicitante);
-        $this->intra_db->setCondicion("=", "periodo", $periodo);
-
-        $qryResult = $this->intra_db->Listar();
-        return $qryResult;
-    }
-
-    public function _obtenerCantidadDiasPeriodo($idSolicitante) {
         $this->intra_db->setCampos("TOP 1 cantidad_dias");
         $this->intra_db->setTabla("TBINT_VACA_DISTRIBUCION_PERIODO");
         $this->intra_db->setCondicion("=", "id_solicitante", $idSolicitante);
         $this->intra_db->setCondicionString('(subperiodo_uno + subperiodo_dos) < cantidad_dias');
         $this->intra_db->setOrden("periodo ASC");
-
         $qryResult = $this->intra_db->Listar();
+
         return $qryResult;
     }
-
-    public function _calcularDiasFaltantesPeriodoActual($dni, $cod_empr, $periodo)
+    public function _obtenerDiasConsumidosPeriodo($idSolicitante, $periodo, $subPeriodo)
     {
-        echo ($dni . $cod_empr . $periodo);
-        $this->intra_db->setCampos("SUM(NRO_DIAS - dbo.FUNC_NUM_DAYS_NO_HABIL(CO_EMPR,CO_SEDE,FECHA_INICIAL,FECHA_FINAL)) AS HABIL, SUM(dbo.FUNC_NUM_DAYS_NO_HABIL(CO_EMPR,CO_SEDE,FECHA_INICIAL,FECHA_FINAL)) AS NO_HABIL");
-        $this->intra_db->setTabla("VW_OFI_VACACIONES");
-        $this->intra_db->setCondicion("=", "CO_TRAB", $dni);
-        $this->intra_db->setCondicion("=", "CO_EMPR", $cod_empr);
-        $this->intra_db->setCondicion("=", "PERIODO_VACACIONAL", $periodo);
-
+        $this->intra_db->setCampos("isnull(sum(num_dias - dbo.FUNC_NUM_DAYS_NO_HABIL(id_empresa,id_sucursal,fecha_inicio,fecha_fin)),0) AS HABIL,isnull(sum(dbo.FUNC_NUM_DAYS_NO_HABIL(id_empresa,id_sucursal,fecha_inicio,fecha_fin)),0) AS NO_HABIL");
+        $this->intra_db->setTabla("TBINT_VACACIONES");
+        $this->intra_db->setCondicion("=", "id_solicitante ", $idSolicitante);
+        $this->intra_db->setCondicion("=", "periodo ", $periodo);
+        $this->intra_db->setCondicion("=", "subperiodo", $subPeriodo);
+        $this->intra_db->setCondicion("=", "eliminado", 0);
+        // agrega un group by
+        $this->intra_db->setGrupo("periodo, subperiodo");
+        $this->intra_db->setCondicionString('id_vaca_estado in (1,2,3,4,5)');
+        return $result = $this->intra_db->Listar();
+    }
+    public function getDiasFlexibles()
+    {
+        $this->intra_db->setCampos('valor');
+        $this->intra_db->setTabla("TBINT_VACA_CONFIG");
+        $this->intra_db->setCondicion("like", "configuracion", "%flexibles%");
         $qryResult = $this->intra_db->Listar();
+
         return $qryResult;
     }
-
-    // public function _calcularDiasFaltantesPeriodoActualSinDni($cod_empr, $periodo)
-    // {
-    //     $this->intra_db->setCampos("SUM(NRO_DIAS - dbo.FUNC_NUM_DAYS_NO_HABIL(CO_EMPR,CO_SEDE,FECHA_INICIAL,FECHA_FINAL)) AS HABIL, SUM(dbo.FUNC_NUM_DAYS_NO_HABIL(CO_EMPR,CO_SEDE,FECHA_INICIAL,FECHA_FINAL)) AS NO_HABIL");
-    //     $this->intra_db->setTabla("VW_OFI_VACACIONES");
-    //     $this->intra_db->setCondicion("=", "CO_EMPR", $cod_empr);
-    //     $this->intra_db->setCondicion("=", "PERIODO_VACACIONAL", $periodo);
-
-    //     $qryResult = $this->intra_db->Listar();
-    //     return $qryResult;
-    // }
-
-    public function _obtenerPeriodoActual($dni)
+    public function obtenerVacacionesOfisis($idUsuario, $empresa, $periodo)
     {
-        // Preparar variables
-        $fechaCorte = date('Y-m-d');
-        $filtroTrabajador = "AND TE.CO_TRAB IN ('".$dni."')";
-        
-        // Parámetros para el stored procedure
         $params = array(
-            array('REM', SQLSRV_PARAM_IN),              // @ISTI_VACA
-            array('OFISIS', SQLSRV_PARAM_IN),           // @ISCO_GRUP
-            array($fechaCorte, SQLSRV_PARAM_IN),        // @IDFE_CORT
-            array('AND TE.CO_EMPR = 01', SQLSRV_PARAM_IN), // @ISCO_WHE1
-            array('', SQLSRV_PARAM_IN),                 // @ISCO_WHE2
-            array($filtroTrabajador, SQLSRV_PARAM_IN),  // @ISCO_WHE3
-            array('', SQLSRV_PARAM_IN),                 // @ISCO_WHE4
-            array('', SQLSRV_PARAM_IN),                 // @ISCO_WHE5
-            array('N', SQLSRV_PARAM_IN)                 // @ISST_VALO_VACA
+            array($idUsuario, SQLSRV_PARAM_IN),
+            array($empresa, SQLSRV_PARAM_IN),
+            array($periodo, SQLSRV_PARAM_IN)
         );
-        
-        // Ejecutar el stored procedure
-        $sqlQuery = "{CALL dbo.USP_VACA_INTRANET_MEJORADO(?,?,?,?,?,?,?,?,?)}";
-        $resultados = $this->intra_db->CallSPWithResult($sqlQuery, $params);
-        
-        // Variables para almacenar el resultado
-        $periodoMenor = null;
-        $infoCompleta = null;
-        
-        if (!empty($resultados)) {
-            // Filtrar solo periodos con días pendientes mayores a cero
-            $periodosConDias = array_filter($resultados, function($item) {
-                return floatval($item->DIAS_PEND) > 0;
-            });
-            
-            if (!empty($periodosConDias)) {
-                // Ordenar los periodos por fecha (del más antiguo al más reciente)
-                usort($periodosConDias, function($a, $b) {
-                    return strcmp($a->PERIODO, $b->PERIODO);
-                });
-                
-                // El primer periodo después de ordenar será el más antiguo con días disponibles
-                $periodoMenor = $periodosConDias[0]->PERIODO;
-                $infoCompleta = $periodosConDias[0];
+
+        $sqlQuery = "{CALL SP_SUMARIO_VACACIONES_EMPLEADO(?,?,?)}";
+        $resultado = $this->intra_db->CallSPWithResult($sqlQuery, $params);
+        return $resultado;
+    }
+    public function obtenerVacacionesProgramadas($idSoliciante, $periodo)
+    {
+        $this->intra_db->setCampos('sum(num_dias - dbo.FUNC_NUM_DAYS_NO_HABIL(id_empresa,id_sucursal,fecha_inicio,fecha_fin)) AS HABIL, sum(dbo.FUNC_NUM_DAYS_NO_HABIL(id_empresa,id_sucursal,fecha_inicio,fecha_fin)) AS NO_HABIL');
+        $this->intra_db->setTabla("TBINT_VACACIONES");
+        $this->intra_db->setCondicion("=", "id_solicitante", $idSoliciante);
+        $this->intra_db->setCondicion("=", "periodo", $periodo);
+        $this->intra_db->setCondicion("=", "id_empresa", '01');
+        $this->intra_db->setCondicion("=", "id_sucursal", 1);
+        $this->intra_db->setCondicion("=", "eliminado", 0);
+        $this->intra_db->setCondicionString('subperiodo in (1,2)');
+        $qryResult = $this->intra_db->Listar();
+
+        return $qryResult;
+    }
+    public function determinarYValidarSolicitud($idUsuario, $periodo, $fechaInicio, $fechaFin, $diasSolicitados, $empresa, $condicion = null)
+    {
+        if ($condicion == 3) {
+            $esFechaEpecial = $this->getFechaEspecial($fechaInicio, $fechaFin, $idUsuario);
+            if (is_array($esFechaEpecial) && count($esFechaEpecial) > 0) {
+                $idVacacionEspecial = $esFechaEpecial[0]->id_vaca_especial ? $esFechaEpecial[0]->id_vaca_especial : null;
+
+                $validacionEspecial = $this->validarVacacionEspecial($idUsuario, $periodo, $fechaInicio, $fechaFin, $empresa);
+                // Copiar los valores de la validación especial al resultado
+                $resultado['subperiodo'] = $validacionEspecial['subperiodo'];
+                $resultado['es_valido'] = $validacionEspecial['es_valido'];
+                $resultado['mensaje'] = $validacionEspecial['mensaje'];
+                // Añadimos el ID de la vacación especial al resultado
+                $resultado['id_vacacion_especial'] = $idVacacionEspecial;
+
+                return $resultado;
+            } else {
+                $resultado['subperiodo'] = 2;
+                $resultado['es_valido'] = false;
+                $resultado['mensaje'] = 'No existe la vacación coordinada en este rango de fechas.';
+                return $resultado;
             }
         }
-        
-        // Puedes retornar solo el periodo o un objeto con toda la información
-        return [
-            'periodo' => $periodoMenor,
-            'info' => $infoCompleta
+        // Validar el subperíodo 1
+        $resultado = [
+            'subperiodo' => 1, // Valor predeterminado
+            'es_valido' => true,
+            'mensaje' => '',
         ];
-    }
+        $validacionSub1 = $this->validarSubperiodo1($idUsuario, $periodo, $empresa, $fechaInicio, $fechaFin);
+        $resultado['validacion_sub1'] = $validacionSub1;
 
+        if (isset($validacionSub1['es_valido']) && $validacionSub1['es_valido'] === false) {
+            $resultado['es_valido'] = false;
+            $resultado['mensaje'] = $validacionSub1['mensaje'];
+            return $resultado;
+        }
+
+        // Validar si el subperiodo 1 esta completo
+        $esSubPeriodoUnoCompleto = isset($validacionSub1['subperiodo_completo']) ? $validacionSub1['subperiodo_completo'] : ($validacionSub1['dias_usados'] >= 15);
+
+        if ($esSubPeriodoUnoCompleto) {
+            $resultado['subperiodo'] = 2;
+            // aqui debemos de validar el subperido2
+            $validacionSubp2 = $this->validarSubperiodo2($idUsuario, $empresa, $periodo, $fechaInicio, $fechaFin);
+
+            // Agregar la validación al resultado
+            $resultado['validacion_subp2'] = $validacionSubp2;
+            if (!$validacionSubp2['es_valido']) {
+                $resultado['es_valido'] = false;
+                $resultado['mensaje'] = $validacionSubp2['mensaje'];
+            } else {
+                $resultado['es_valido'] = true;
+                $resultado['mensaje'] = "Solicitud asignada al subperíodo 2.";
+            }
+        } else {
+            // La solicitud va al subperíodo 1
+            $resultado['subperiodo'] = 1;
+
+            // Verificar si cumple con el mínimo de días para subperíodo 1
+            if ($diasSolicitados < $validacionSub1['siguiente_solicitud_minimo']) {
+                $resultado['es_valido'] = false;
+                $resultado['mensaje'] = "La solicitud debe ser por un mínimo de {$validacionSub1['siguiente_solicitud_minimo']} días.";
+                return $resultado;
+            }
+            $resultado['mensaje'] = "Solicitud asignada al subperíodo 1.";
+        }
+        return $resultado;
+    }
+    public function validarSubperiodo1($idUsuario, $periodo, $empresa, $fechaInicio, $fechaFin)
+    {
+        // Obtener solicitudes existentes en el subperíodo 1
+        $this->intra_db->setCampos("id_vacacion, NUM_DIAS as dias");
+        $this->intra_db->setTabla("TBINT_VACACIONES");
+        $this->intra_db->setCondicion("=", "periodo", $periodo);
+        $this->intra_db->setCondicion("=", "subperiodo", 1);
+        $this->intra_db->setCondicion("=", "id_solicitante", $idUsuario);
+        $this->intra_db->setCondicion("=", "eliminado", 0);
+        $this->intra_db->setCondicionString('id_vaca_estado in (1,2,3,4,5)');
+        $this->intra_db->setOrden("id_vacacion ASC");
+
+        $resultadoBD = $this->intra_db->Listar();
+
+        // Inicializar variables para solicitudes en el sistema
+        $totalDias = 0;
+        $solicitudes = [];
+
+        if (is_array($resultadoBD)) {
+            foreach ($resultadoBD as $item) {
+                if (is_object($item)) {
+                    // Convertir objeto a array para consistencia
+                    $solicitud = [
+                        'id_vacacion' => $item->id_vacacion,
+                        'dias' => $item->dias
+                    ];
+                    $solicitudes[] = $solicitud;
+                    $totalDias += intval($item->dias);
+                } elseif (is_array($item)) {
+                    $solicitudes[] = $item;
+                    $totalDias += intval($item['dias']);
+                }
+            }
+        }
+
+        // Límite teórico del subperíodo 1
+        $LIMITE_SUBPERIODO1 = 15;
+
+        // Verificar si el subperíodo 1 está completo (15+ días)
+        $subperiodoCompleto = ($totalDias >= $LIMITE_SUBPERIODO1);
+
+        // Obtener días programados internos
+        $vacacionesProgramadas = $this->obtenerVacacionesProgramadas($idUsuario, $periodo);
+        $diasHabilesProgramados = 0;
+        $diasNoHabilesProgramados = 0;
+        if (!empty($vacacionesProgramadas) && isset($vacacionesProgramadas[0])) {
+            $diasHabilesProgramados = $vacacionesProgramadas[0]->HABIL ?? 0;
+            $diasNoHabilesProgramados = $vacacionesProgramadas[0]->NO_HABIL ?? 0;
+        }
+
+        // Obtener y validar vacaciones Ofisis
+        $vacacionesOfisis = $this->obtenerVacacionesOfisis($idUsuario, $empresa, $periodo);
+        $diasHabilesOfisis = 0;
+        $diasNoHabilesOfisis = 0;
+
+        if (!empty($vacacionesOfisis) && isset($vacacionesOfisis[0])) {
+            $diasHabilesOfisis = $vacacionesOfisis[0]->DIAS_HABILES_OFISIS ?? 0;
+            $diasNoHabilesOfisis = $vacacionesOfisis[0]->DIAS_NO_HABILES_OFISIS ?? 0;
+        }
+
+        // Validar cuantas días hábiles y no hábiles se tienen en total
+        $totalDiasHabiles = $diasHabilesProgramados + $diasHabilesOfisis;
+        $totalDiasNoHabiles = $diasNoHabilesProgramados + $diasNoHabilesOfisis;
+        $totalDiasOfisis = $diasHabilesOfisis + $diasNoHabilesOfisis;
+        $totalDiasOfisisYProgramadas = $totalDiasOfisis + $diasHabilesProgramados + $diasNoHabilesProgramados;
+
+        // Constantes para los límites
+        $TOTAL_DIAS_NO_HABILES_REQUERIDOS = 8;
+        $TOTAL_DIAS_HABILES_REQUERIDOS = 22; // 30 - 8
+        $TOTAL_DIAS_VACACIONES = 30;
+
+        // Calcular días de la solicitud actual 
+        $diasSolicitudActual = $this->_sumarDiasPorTipo($fechaInicio, $fechaFin);
+        $diasHabilesSolicitud = $diasSolicitudActual['habil'];
+        $diasNoHabilesSolicitud = $diasSolicitudActual['no_habil'];
+
+        // Verificar si con esta solicitud se excedería el límite de días totales
+        $totalDiasHabilesConSolicitud = $totalDiasHabiles + $diasHabilesSolicitud;
+        $totalDiasNoHabilesConSolicitud = $totalDiasNoHabiles + $diasNoHabilesSolicitud;
+        $totalDiasConSolicitud = $totalDiasOfisisYProgramadas + $diasHabilesSolicitud + $diasNoHabilesSolicitud;
+
+        // Días restantes antes de la solicitud
+        $diasRestantesParaElUsuario = $TOTAL_DIAS_VACACIONES - $totalDiasOfisisYProgramadas;
+
+        // Días hábiles y no hábiles restantes
+        $diasHabilesRestantes = $TOTAL_DIAS_HABILES_REQUERIDOS - $totalDiasHabiles;
+        $diasNoHabilesRestantes = $TOTAL_DIAS_NO_HABILES_REQUERIDOS - $totalDiasNoHabiles;
+
+        // Inicializar resultado con validez
+        $resultado = [
+            'dias_usados' => $totalDias,
+            'dias_disponibles' => $LIMITE_SUBPERIODO1 - $totalDias - $totalDiasOfisis > 0 ? $LIMITE_SUBPERIODO1 - $totalDias - $totalDiasOfisis : 0,
+            'solicitudes' => $solicitudes,
+            'cumple_primera_solicitud' => false,
+            'siguiente_solicitud_minimo' => 0,
+            'exceso' => max(0, $totalDias - $LIMITE_SUBPERIODO1),
+            'mensaje' => '',
+            'subperiodo_completo' => $subperiodoCompleto,
+            'es_valido' => true
+        ];
+
+        // VALIDACIÓN 1: Verificar si la solicitud excede el total de días disponibles
+        if ($totalDiasConSolicitud > $TOTAL_DIAS_VACACIONES) {
+            $resultado['es_valido'] = false;
+            $resultado['mensaje'] = "La solicitud excede el límite permitido. Días disponibles: {$diasRestantesParaElUsuario}.";
+            return $resultado;
+        }
+
+        // VALIDACIÓN 2: Verificar si la solicitud excede los días hábiles disponibles
+        if ($totalDiasHabilesConSolicitud > $TOTAL_DIAS_HABILES_REQUERIDOS) {
+            $resultado['es_valido'] = false;
+            $resultado['mensaje'] = "La solicitud excede los días hábiles permitidos. Días hábiles disponibles: {$diasHabilesRestantes}.";
+            return $resultado;
+        }
+
+        // VALIDACIÓN 3: Verificar balance entre días hábiles y no hábiles
+        // Si quedan pocos días y no se cumplirían los días no hábiles requeridos
+        if ($diasRestantesParaElUsuario <= 10) {
+            // Verificar si después de esta solicitud, los días no hábiles restantes serían suficientes
+            $diasNoHabilesRestantesDespuesSolicitud = $diasNoHabilesRestantes - $diasNoHabilesSolicitud;
+            $diasHabilesRestantesDespuesSolicitud = $diasHabilesRestantes - $diasHabilesSolicitud;
+
+            // Si quedarían días hábiles pero no suficientes días no hábiles restantes
+            if ($diasHabilesRestantesDespuesSolicitud > 0 && $diasNoHabilesRestantesDespuesSolicitud > 0) {
+                // Verificar si la proporción permitiría cumplir con los 8 días no hábiles
+                if ($diasHabilesRestantesDespuesSolicitud < $diasNoHabilesRestantesDespuesSolicitud) {
+                    $resultado['es_valido'] = false;
+                    $resultado['mensaje'] = "Después de esta solicitud quedarían {$diasHabilesRestantesDespuesSolicitud} días hábiles y {$diasNoHabilesRestantesDespuesSolicitud} días no hábiles. " .
+                        "Debe incluir más días no hábiles en esta solicitud para mantener el balance requerido.";
+                    return $resultado;
+                }
+            }
+
+            // Si no quedarían días no hábiles pero sí días hábiles
+            if ($diasNoHabilesRestantesDespuesSolicitud <= 0 && $diasHabilesRestantesDespuesSolicitud > 0) {
+                $resultado['es_valido'] = false;
+                $resultado['mensaje'] = "Esta solicitud agotaría los días no hábiles pero aún quedarían {$diasHabilesRestantesDespuesSolicitud} días hábiles. " .
+                    "Debe incluir más días no hábiles en su solicitud.";
+                return $resultado;
+            }
+        }
+
+        // Si el subperíodo está completo, modificamos el mensaje
+        if ($subperiodoCompleto) {
+            $resultado['mensaje'] = "El subperíodo 1 ya tiene {$totalDias} días asignados (límite: {$LIMITE_SUBPERIODO1}). ";
+            $resultado['mensaje'] .= "Nuevas solicitudes deben ir al subperíodo 2.";
+            return $resultado;
+        }
+
+        // Lógica para subperíodo no completo
+        if (count($solicitudes) == 0) {
+            // No hay solicitudes en subperíodo 1
+            $resultado['siguiente_solicitud_minimo'] = 7;
+            $resultado['mensaje'] = "La primera solicitud debe ser de mínimo 7 días.";
+        } else if (count($solicitudes) == 1 && $totalDias == 7) {
+            // Solo hay una solicitud por exactamente 7 días
+            $resultado['cumple_primera_solicitud'] = true;
+            $resultado['siguiente_solicitud_minimo'] = 8;
+            $resultado['mensaje'] = "Existe una solicitud por 7 días. La próxima debe ser de mínimo 8 días.";
+        } else {
+            // Otros casos (múltiples solicitudes o primera > 7 días)
+            $resultado['cumple_primera_solicitud'] = true;
+            $resultado['siguiente_solicitud_minimo'] = 7;
+            $resultado['mensaje'] = "Su solicitud debe ser de mínimo 7 días.";
+        }
+
+        // Añadir nota sobre exceso (si no está completo pero hay exceso)
+        if (!$subperiodoCompleto && $resultado['exceso'] > 0) {
+            $resultado['mensaje'] .= " Nota: El subperíodo 1 tiene {$totalDias} días asignados, superando el límite teórico de {$LIMITE_SUBPERIODO1} días por {$resultado['exceso']} días, lo cual es válido según las reglas establecidas.";
+        }
+
+        // // Añadir información detallada sobre días
+        // $resultado['detalles'] = [
+        //     'dias_habiles_ofisis' => $diasHabilesOfisis,
+        //     'dias_no_habiles_ofisis' => $diasNoHabilesOfisis,
+        //     'dias_habiles_programados' => $diasHabilesProgramados,
+        //     'dias_no_habiles_programados' => $diasNoHabilesProgramados,
+        //     'total_dias_habiles' => $totalDiasHabiles,
+        //     'total_dias_no_habiles' => $totalDiasNoHabiles,
+        //     'total_dias_consumidos' => $totalDiasOfisisYProgramadas,
+        //     'dias_habiles_solicitud' => $diasHabilesSolicitud,
+        //     'dias_no_habiles_solicitud' => $diasNoHabilesSolicitud,
+        //     'dias_habiles_restantes' => $diasHabilesRestantes,
+        //     'dias_no_habiles_restantes' => $diasNoHabilesRestantes,
+        //     'total_dias_restantes' => $diasRestantesParaElUsuario
+        // ];
+
+        return $resultado;
+    }
+    public function validarSubperiodo2($idUsuario, $empresa, $periodo, $fechaInicio, $fechaFin)
+    {
+        // Primero, verificamos el exceso del subperíodo 1
+        $validacionSub1 = $this->validarSubperiodo1($idUsuario, $periodo, $empresa, $fechaInicio, $fechaFin);
+        $excesoSubperiodo1 = $validacionSub1['exceso']; // Días que exceden el límite de 15
+
+        // Obtener solicitudes existentes en el subperíodo 2
+        $this->intra_db->setCampos("id_vacacion, NUM_DIAS as dias");
+        $this->intra_db->setTabla("TBINT_VACACIONES");
+        $this->intra_db->setCondicion("=", "periodo", $periodo);
+        $this->intra_db->setCondicion("=", "subperiodo", 2);
+        $this->intra_db->setCondicion("=", "id_solicitante", $idUsuario);
+        $this->intra_db->setCondicion("=", "eliminado", 0);
+        $this->intra_db->setCondicionString('id_vaca_estado in (1,2,3,4,5)');
+        $this->intra_db->setOrden("id_vacacion ASC");
+
+        $resultadoBD = $this->intra_db->Listar();
+
+        // Inicializar variables
+        $totalDias = 0;
+        $solicitudes = [];
+
+        // Verificar si el resultado es null o vacío
+        if (empty($resultadoBD)) {
+            $resultadoBD = [];
+        }
+
+        if (is_array($resultadoBD)) {
+            foreach ($resultadoBD as $item) {
+                if (is_object($item)) {
+                    // Convertir objeto a array para consistencia
+                    $solicitud = [
+                        'id_vacacion' => $item->id_vacacion,
+                        'dias' => $item->dias
+                    ];
+                    $solicitudes[] = $solicitud;
+                    $totalDias += intval($item->dias);
+                } elseif (is_array($item)) {
+                    $solicitudes[] = $item;
+                    $totalDias += intval($item['dias']);
+                }
+            }
+        }
+
+        // Límite teórico del subperíodo 2
+        $LIMITE_SUBPERIODO2 = 15;
+
+        // Disponibilidad real ajustada por exceso en subperíodo 1
+        $disponibilidadReal = $LIMITE_SUBPERIODO2 - $excesoSubperiodo1;
+
+        // Si la disponibilidad real es negativa, establecemos a 0
+        if ($disponibilidadReal < 0) {
+            $disponibilidadReal = 0;
+        }
+
+        $vacacionesProgramadas = $this->obtenerVacacionesProgramadas($idUsuario, $periodo);
+        $diasHabilesProgramados = 0;
+        $diasNoHabilesProgramados = 0;
+        if (!empty($vacacionesProgramadas) && isset($vacacionesProgramadas[0])) {
+            $diasHabilesProgramados = $vacacionesProgramadas[0]->HABIL ?? 0;
+            $diasNoHabilesProgramados = $vacacionesProgramadas[0]->NO_HABIL ?? 0;
+        }
+
+        // Obtener y validar vacaciones Ofisis
+        $vacacionesOfisis = $this->obtenerVacacionesOfisis($idUsuario, $empresa, $periodo);
+        $diasHabilesOfisis = 0;
+        $diasNoHabilesOfisis = 0;
+
+        if (!empty($vacacionesOfisis) && isset($vacacionesOfisis[0])) {
+            $diasHabilesOfisis = $vacacionesOfisis[0]->DIAS_HABILES_OFISIS ?? 0;
+            $diasNoHabilesOfisis = $vacacionesOfisis[0]->DIAS_NO_HABILES_OFISIS ?? 0;
+        }
+
+        // Validar cuantas días hábiles y no hábiles se tienen en total
+        $totalDiasHabiles = $diasHabilesProgramados + $diasHabilesOfisis;
+        $totalDiasNoHabiles = $diasNoHabilesProgramados + $diasNoHabilesOfisis;
+        $totalDiasOfisis = $diasHabilesOfisis + $diasNoHabilesOfisis;
+        
+        // Resultado de la validación
+        $resultado = [
+            'dias_usados' => $totalDias,
+            'dias_disponibles' => $disponibilidadReal - $totalDias - $totalDiasOfisis > 0 ? $disponibilidadReal - $totalDias - $totalDiasOfisis : 0,
+            'solicitudes' => $solicitudes,
+            'es_valido' => true,
+            'mensaje' => empty($solicitudes) ? 'No se han registrado solicitudes en el subperiodo 2' : '',
+            'vacio' => empty($solicitudes), // Indicador explícito si no hay solicitudes
+            'exceso_subperiodo1' => $excesoSubperiodo1, // Guardar el exceso del subperíodo 1
+            'limite_original' => $LIMITE_SUBPERIODO2, // Límite original
+            'limite_ajustado' => $disponibilidadReal - $totalDiasOfisis // Límite ajustado después del exceso
+        ];
+
+        $TOTAL_DIAS_NO_HABILES_REQUERIDOS = 8;
+        $TOTAL_DIAS_HABILES_REQUERIDOS = 22; // 30 - 8
+
+        // Calcular días de la solicitud actual
+        $diasSolicitudActual = $this->_sumarDiasPorTipo($fechaInicio, $fechaFin);
+        $diasHabilesSolicitud = $diasSolicitudActual['habil'];
+        $diasNoHabilesSolicitud = $diasSolicitudActual['no_habil'];
+
+        // Verificar si con esta solicitud se excedería el límite de días hábiles permitidos
+        $totalDiasHabilesConSolicitud = $totalDiasHabiles + $diasHabilesSolicitud;
+        $totalDiasNoHabilesConSolicitud = $totalDiasNoHabiles + $diasNoHabilesSolicitud;
+        $diasNoHabilesFaltantesDespuesSolicitud = $TOTAL_DIAS_NO_HABILES_REQUERIDOS - $totalDiasNoHabilesConSolicitud;
+        // var_dump($totalDiasHabilesConSolicitud);
+        // die();
+        // Si se excedería el límite de días hábiles y aún faltan días no hábiles por cumplir
+        if ($totalDiasHabilesConSolicitud > $TOTAL_DIAS_HABILES_REQUERIDOS || $diasNoHabilesFaltantesDespuesSolicitud > 0) {
+            $resultado['es_valido'] = false;
+            $resultado['mensaje'] = "Por favor seleccione otro rango de fecha que incluya más fines de semana. " .
+                "Falta incluir {$diasNoHabilesFaltantesDespuesSolicitud} días no hábiles para cumplir con el mínimo requerido.";
+            // Sugerencia adicional
+            if ($diasNoHabilesFaltantesDespuesSolicitud == 1) {
+                $resultado['mensaje'] .= " Considere incluir al menos un día más de fin de semana en su solicitud.";
+            } else {
+                $resultado['mensaje'] .= " Considere incluir al menos {$diasNoHabilesFaltantesDespuesSolicitud} días más de fin de semana en su solicitud.";
+            }
+            // var_dump($resultado);
+            return $resultado;
+        }
+
+        return $resultado;
+    }
+    private function validarVacacionEspecial($idUsuario, $periodo, $fechaInicio, $fechaFin, $empresa)
+    {
+        // Resultado por defecto
+        $resultado = [
+            'subperiodo' => 2,  // Por defecto asignamos al subperíodo 2
+            'es_valido' => true,
+            'mensaje' => ''
+        ];
+
+        // Obtener vacaciones programadas
+        $vacacionesProgramadas = $this->obtenerVacacionesProgramadas($idUsuario, $periodo);
+        $diasHabilesProgramados = 0;
+        $diasNoHabilesProgramados = 0;
+        if (!empty($vacacionesProgramadas) && isset($vacacionesProgramadas[0])) {
+            $diasHabilesProgramados = $vacacionesProgramadas[0]->HABIL ?? 0;
+            $diasNoHabilesProgramados = $vacacionesProgramadas[0]->NO_HABIL ?? 0;
+        }
+
+        // Obtener y validar vacaciones Ofisis
+        $vacacionesOfisis = $this->obtenerVacacionesOfisis($idUsuario, $empresa, $periodo);
+        $diasHabilesOfisis = 0;
+        $diasNoHabilesOfisis = 0;
+
+        if (!empty($vacacionesOfisis) && isset($vacacionesOfisis[0])) {
+            $diasHabilesOfisis = $vacacionesOfisis[0]->DIAS_HABILES_OFISIS ?? 0;
+            $diasNoHabilesOfisis = $vacacionesOfisis[0]->DIAS_NO_HABILES_OFISIS ?? 0;
+        }
+
+        // Validar cuantas días hábiles y no hábiles se tienen en total
+        $totalDiasHabiles = $diasHabilesProgramados + $diasHabilesOfisis;
+        $totalDiasNoHabiles = $diasNoHabilesProgramados + $diasNoHabilesOfisis;
+        // Total consumido en ofisis (solicitudes antiguas antes del cambio)
+        $totalDiasOfisis = $diasHabilesOfisis + $diasNoHabilesOfisis;
+
+        // Obtener información de ambos subperíodos
+        $infoSubperiodo1 = $this->_obtenerDiasConsumidosPeriodo($idUsuario, $periodo, 1);
+        $diasHabilesUsadosSubp1 = 0;
+        $diasNoHabilesUsadosSubp1 = 0;
+        if (!empty($infoSubperiodo1) && isset($infoSubperiodo1[0])) {
+            $diasHabilesUsadosSubp1 = $infoSubperiodo1[0]->HABIL ?? 0;
+            $diasNoHabilesUsadosSubp1 = $infoSubperiodo1[0]->NO_HABIL ?? 0;
+        }
+
+
+        $infoSubperiodo2 = $this->_obtenerDiasConsumidosPeriodo($idUsuario, $periodo, 2);
+        $diasHabilesUsadosSubp2 = 0;
+        $diasNoHabilesUsadosSubp2 = 0;
+        if (!empty($infoSubperiodo2) && isset($infoSubperiodo2[0])) {
+            $diasHabilesUsadosSubp2 = $infoSubperiodo2[0]->HABIL ?? 0;
+            $diasNoHabilesUsadosSubp2 = $infoSubperiodo2[0]->NO_HABIL ?? 0;
+        }
+
+        // Calcular días hábiles y no hábiles de la solicitud actual
+        $diasSolicitudActual = $this->_sumarDiasPorTipo($fechaInicio, $fechaFin);
+
+
+        $diasHabilesSolicitud = $diasSolicitudActual['habil'];
+        $diasNoHabilesSolicitud = $diasSolicitudActual['no_habil'];
+
+        // Total de días hábiles y no hábiles usados
+        $totalDiasHabilesUsados = $diasHabilesUsadosSubp1 + $diasHabilesUsadosSubp2 + $diasHabilesOfisis;
+        $totalDiasNoHabilesUsados = $diasNoHabilesUsadosSubp1 + $diasNoHabilesUsadosSubp2 + $diasNoHabilesOfisis;
+
+        // Límites
+        $LIMITE_DIAS_HABILES_TOTAL = 22;
+        $LIMITE_DIAS_NO_HABILES_TOTAL = 8;
+        $LIMITE_DIAS_SUBPERIODO = 11;
+        $MINIMO_DIAS_NO_HABILES_POR_SUBPERIODO = 4;
+        // Verificar si después de esta solicitud se excedería el límite total de días hábiles
+        if ($totalDiasHabilesUsados + $diasHabilesSolicitud > $LIMITE_DIAS_HABILES_TOTAL) {
+            $diasHabilesDisponibles = $LIMITE_DIAS_HABILES_TOTAL - $totalDiasHabilesUsados;
+
+            $resultado['es_valido'] = false;
+            $resultado['mensaje'] = "No puede solicitar {$diasHabilesSolicitud} días hábiles. Solo tiene {$diasHabilesDisponibles} días hábiles disponibles.";
+            return $resultado;
+        }
+
+        // Verificar si ya se han completado los días hábiles pero faltan días no hábiles
+        if ($totalDiasHabilesUsados == $LIMITE_DIAS_HABILES_TOTAL && $totalDiasNoHabilesUsados < $LIMITE_DIAS_NO_HABILES_TOTAL) {
+            // Si la solicitud no incluye días no hábiles, rechazarla
+            if ($diasNoHabilesSolicitud == 0) {
+                $diasNoHabilesFaltantes = $LIMITE_DIAS_NO_HABILES_TOTAL - $totalDiasNoHabilesUsados;
+
+                $resultado['es_valido'] = false;
+                $resultado['mensaje'] = "Ya ha completado los días hábiles permitidos. Solo puede solicitar días que incluyan fines de semana. " .
+                    "Aún debe completar {$diasNoHabilesFaltantes} días no hábiles.";
+
+                return $resultado;
+            }
+        }
+
+        // Determinar a qué subperíodo asignar la solicitud
+        // Regla: Primero llenar el subperíodo 2 hasta 11 días, luego el subperíodo 1
+        if ($diasHabilesUsadosSubp2 < $LIMITE_DIAS_SUBPERIODO) {
+            // Verificar si la solicitud excedería el límite del subperíodo 2
+            if ($diasHabilesUsadosSubp2 + $diasHabilesSolicitud > $LIMITE_DIAS_SUBPERIODO) {
+                // La solicitud excede el límite del subperíodo 2, verificar si el subperíodo 1 está disponible
+                if ($diasHabilesUsadosSubp1 < $LIMITE_DIAS_SUBPERIODO) {
+                    $resultado['subperiodo'] = 1;
+                    $resultado['mensaje'] = "Vacación especial asignada al subperíodo 1 (subperíodo 2 se completaría).";
+                } else {
+                    // Ambos subperíodos están llenos o se completarían
+                    $diasDisponiblesSubp2 = $LIMITE_DIAS_SUBPERIODO - $diasHabilesUsadosSubp2;
+                    $diasDisponiblesSubp1 = $LIMITE_DIAS_SUBPERIODO - $diasHabilesUsadosSubp1;
+
+                    $resultado['es_valido'] = false;
+                    $resultado['mensaje'] = "La solicitud excede los límites de ambos subperíodos. " .
+                        "Disponible en subperíodo 2: {$diasDisponiblesSubp2} días. " .
+                        "Disponible en subperíodo 1: {$diasDisponiblesSubp1} días.";
+
+                    return $resultado;
+                }
+            } else {
+                // La solicitud cabe en el subperíodo 2
+                $resultado['subperiodo'] = 2;
+                $resultado['mensaje'] = "Vacación especial asignada al subperíodo 2.";
+            }
+        } else {
+            // El subperíodo 2 está lleno, verificar si el subperíodo 1 está disponible
+            if ($diasHabilesUsadosSubp1 < $LIMITE_DIAS_SUBPERIODO) {
+                // Verificar si la solicitud excedería el límite del subperíodo 1
+                if ($diasHabilesUsadosSubp1 + $diasHabilesSolicitud > $LIMITE_DIAS_SUBPERIODO) {
+                    $diasDisponiblesSubp1 = $LIMITE_DIAS_SUBPERIODO - $diasHabilesUsadosSubp1;
+
+                    $resultado['es_valido'] = false;
+                    $resultado['mensaje'] = "La solicitud excede el límite del subperíodo 1. " .
+                        "Disponible en subperíodo 1: {$diasDisponiblesSubp1} días.";
+
+                    return $resultado;
+                } else {
+                    // La solicitud cabe en el subperíodo 1
+                    $resultado['subperiodo'] = 1;
+                    $resultado['mensaje'] = "Vacación especial asignada al subperíodo 1 (subperíodo 2 completo).";
+                }
+            } else {
+                // Ambos subperíodos están llenos
+                $resultado['es_valido'] = false;
+                $resultado['mensaje'] = "No se pueden asignar más días hábiles. Ambos subperíodos han alcanzado su límite de 11 días.";
+
+                // Verificar si aún faltan días no hábiles por cumplir
+                if ($totalDiasNoHabilesUsados < $LIMITE_DIAS_NO_HABILES_TOTAL) {
+                    $diasNoHabilesFaltantes = $LIMITE_DIAS_NO_HABILES_TOTAL - $totalDiasNoHabilesUsados;
+                    $resultado['mensaje'] .= " Aún debe completar {$diasNoHabilesFaltantes} días no hábiles.";
+                }
+
+                return $resultado;
+            }
+        }
+        return $resultado;
+    }
 }
