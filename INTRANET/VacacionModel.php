@@ -21,7 +21,7 @@ class VacacionModel extends ModelBase
 
         $this->intra_db->usarUTF8();
         $this->intra_db->setCampos("id_vacacion, empresa, gerencia, departamento, area, id_solicitante, solicitante, id_generador, generador,  fecha_crea, id_vaca_condicion, vaca_condicion, fecha_inicio, fecha_fin, num_dias, id_vaca_estado, vaca_estado, idTipo, tipo");
-        $this->intra_db->setTabla("VW_VACACIONES");
+        $this->intra_db->setTabla("VW_VACACIONES_OPTIMIZADO");
 
         if ($dnis) {
             $this->intra_db->setCondicionString(" ( dni IN (" . $dnis . ") OR (id_generador = {$idGenerador} AND idTipo <> 2) )");
@@ -79,7 +79,7 @@ class VacacionModel extends ModelBase
 
         $this->intra_db->usarUTF8();
         $this->intra_db->setCampos("COUNT(*) AS num");
-        $this->intra_db->setTabla("VW_VACACIONES");
+        $this->intra_db->setTabla("VW_VACACIONES_OPTIMIZADO");
 
         if ($dnis) {
             $this->intra_db->setCondicionString(" ( dni IN (" . $dnis . ") OR (id_generador = {$idGenerador} AND idTipo <> 2) )");
@@ -234,7 +234,7 @@ class VacacionModel extends ModelBase
     public function getInfoVacacion($idVacacion)
     {
         $this->intra_db->setCampos('*');
-        $this->intra_db->setTabla("VW_VACACIONES");
+        $this->intra_db->setTabla("VW_VACACIONES_OPTIMIZADO");
         $this->intra_db->setCondicion("=", "id_vacacion", $idVacacion);
         $qryResult = $this->intra_db->Listar();
         return $qryResult;
@@ -292,7 +292,7 @@ class VacacionModel extends ModelBase
 
         $this->intra_db->usarUTF8();
         $this->intra_db->setCampos("id_vacacion, gerencia, departamento, area, seccion, solicitante, dni,generador, dni_generador, fecha_crea, vaca_condicion, fecha_inicio, fecha_fin, num_dias, vaca_estado, tipo, dbo.FUNC_VACA_AUTORIZADOR(id_vacacion,1) autorizador_1ra, dbo.FUNC_VACA_AUTORIZADOR_DNI(id_vacacion,1) dni_1ra,dbo.FUNC_VACA_AUTORIZADOR(id_vacacion,2) autorizador_2da,dbo.FUNC_VACA_AUTORIZADOR_DNI(id_vacacion,2) dni_2da");
-        $this->intra_db->setTabla("VW_VACACIONES");
+        $this->intra_db->setTabla("VW_VACACIONES_OPTIMIZADO");
 
         if ($dnis) {
             $this->intra_db->setCondicionString(" ( dni IN (" . $dnis . ") OR (id_generador = {$idGenerador} AND idTipo <> 2) )");
@@ -824,7 +824,7 @@ class VacacionModel extends ModelBase
             array($truncas, SQLSRV_PARAM_IN)
         );
 
-        $sqlQuery = "{CALL USP_VACA_PERIODO(?,?,?,?)}";
+        $sqlQuery = "{CALL USP_VACA_PERIODO_OPTIMIZADO(?,?,?,?)}";
         $qryResult = $this->intra_db->CallSPWithResult($sqlQuery, $params);
         return $qryResult;
     }
@@ -850,7 +850,7 @@ class VacacionModel extends ModelBase
     {
         $this->intra_db->usarUTF8();
         $this->intra_db->setCampos("SUM(NRO_DIAS) 'NRO_DIAS', SUM(NRO_DIAS - dbo.FUNC_NUM_DAYS_NO_HABIL(CO_EMPR,CO_SEDE,FECHA_INICIAL,FECHA_FINAL)) AS HABIL, SUM(dbo.FUNC_NUM_DAYS_NO_HABIL(CO_EMPR,CO_SEDE,FECHA_INICIAL,FECHA_FINAL)) AS NO_HABIL");
-        $this->intra_db->setTabla("VW_OFI_VACACIONES");
+        $this->intra_db->setTabla("VW_OFI_VACACIONES_OPTIMIZADO");
         $this->intra_db->setCondicion("=", "CO_TRAB", $cod_trab);
         $this->intra_db->setCondicion("=", "CO_EMPR", $cod_empr);
         $this->intra_db->setCondicion("=", "PERIODO_VACACIONAL", $periodo);
@@ -1159,7 +1159,7 @@ class VacacionModel extends ModelBase
     public function getPendientesEjecucion($idGerencia = 0)
     {
         $this->intra_db->setCampos('id_unidad,gerencia,area,seccion,dni,id_solicitante,solicitante,vaca_condicion,fecha_inicio,fecha_fin,num_dias');
-        $this->intra_db->setTabla("VW_VACACIONES");
+        $this->intra_db->setTabla("VW_VACACIONES_OPTIMIZADO");
         $this->intra_db->setCondicion("=", "id_vaca_estado", 4);
         $this->intra_db->setCondicionString('fecha_fin < CAST(GETDATE() AS DATE)');
         if ($idGerencia) {
@@ -1558,95 +1558,95 @@ class VacacionModel extends ModelBase
     // }
 
     public function _obtenerPeriodoActual($dni)
-{
-    // Preparar variables
-    $fechaCorte = date('Y-m-d');
-    $filtroTrabajador = "AND TE.CO_TRAB IN ('" . $dni . "')";
+    {
+        // Preparar variables
+        $fechaCorte = date('Y-m-d');
+        $filtroTrabajador = "AND TE.CO_TRAB IN ('" . $dni . "')";
 
-    // Parámetros para el stored procedure
-    $params = array(
-        array('REM', SQLSRV_PARAM_IN),              // @ISTI_VACA
-        array('OFISIS', SQLSRV_PARAM_IN),           // @ISCO_GRUP
-        array($fechaCorte, SQLSRV_PARAM_IN),        // @IDFE_CORT
-        array('AND TE.CO_EMPR = 01', SQLSRV_PARAM_IN), // @ISCO_WHE1
-        array('', SQLSRV_PARAM_IN),                 // @ISCO_WHE2
-        array($filtroTrabajador, SQLSRV_PARAM_IN),  // @ISCO_WHE3
-        array('', SQLSRV_PARAM_IN),                 // @ISCO_WHE4
-        array('', SQLSRV_PARAM_IN),                 // @ISCO_WHE5
-        array('N', SQLSRV_PARAM_IN)                 // @ISST_VALO_VACA
-    );
+        // Parámetros para el stored procedure
+        $params = array(
+            array('REM', SQLSRV_PARAM_IN),              // @ISTI_VACA
+            array('OFISIS', SQLSRV_PARAM_IN),           // @ISCO_GRUP
+            array($fechaCorte, SQLSRV_PARAM_IN),        // @IDFE_CORT
+            array('AND TE.CO_EMPR = 01', SQLSRV_PARAM_IN), // @ISCO_WHE1
+            array('', SQLSRV_PARAM_IN),                 // @ISCO_WHE2
+            array($filtroTrabajador, SQLSRV_PARAM_IN),  // @ISCO_WHE3
+            array('', SQLSRV_PARAM_IN),                 // @ISCO_WHE4
+            array('', SQLSRV_PARAM_IN),                 // @ISCO_WHE5
+            array('N', SQLSRV_PARAM_IN)                 // @ISST_VALO_VACA
+        );
 
     // Ejecutar el stored procedure
-    $sqlQuery = "{CALL dbo.USP_VACA_INTRANET_MEJORADO(?,?,?,?,?,?,?,?,?)}";
+    $sqlQuery = "{CALL dbo.USP_VACA_INTRANET_OPTIMIZADO(?,?,?,?,?,?,?,?,?)}";
     $resultados = $this->intra_db->CallSPWithResult($sqlQuery, $params);
 
-    // Variables para almacenar el resultado
-    $periodoMenor = null;
-    $infoCompleta = null;
+        // Variables para almacenar el resultado
+        $periodoMenor = null;
+        $infoCompleta = null;
 
-    if (!empty($resultados)) {
-        // Filtrar solo periodos con días pendientes mayores a cero
-        $periodosConDias = array_filter($resultados, function ($item) {
-            return floatval($item->DIAS_PEND) > 0;
-        });
-
-        if (!empty($periodosConDias)) {
-            // Ordenar los periodos por fecha (del más antiguo al más reciente)
-            usort($periodosConDias, function ($a, $b) {
-                return strcmp($a->PERIODO, $b->PERIODO);
+        if (!empty($resultados)) {
+            // Filtrar solo periodos con días pendientes mayores a cero
+            $periodosConDias = array_filter($resultados, function ($item) {
+                return floatval($item->DIAS_PEND) > 0;
             });
 
-            // Evaluar cada periodo para determinar si sus días programados completan los días pendientes
-            foreach ($periodosConDias as $periodo) {
-                // Consultar días programados para este período
-                $diasProgramados = $this->_consultarDiasProgramados($dni, $periodo->PERIODO);
+            if (!empty($periodosConDias)) {
+                // Ordenar los periodos por fecha (del más antiguo al más reciente)
+                usort($periodosConDias, function ($a, $b) {
+                    return strcmp($a->PERIODO, $b->PERIODO);
+                });
 
-                // Si los días programados son menores a los días pendientes, este es el período actual
-                if ($diasProgramados['HABIL'] + $diasProgramados['NO_HABIL'] < $periodo->DIAS_PEND) {
-                    $periodoMenor = $periodo->PERIODO;
-                    $infoCompleta = $periodo;
-                    break;
+                // Evaluar cada periodo para determinar si sus días programados completan los días pendientes
+                foreach ($periodosConDias as $periodo) {
+                    // Consultar días programados para este período
+                    $diasProgramados = $this->_consultarDiasProgramados($dni, $periodo->PERIODO);
+
+                    // Si los días programados son menores a los días pendientes, este es el período actual
+                    if ($diasProgramados['HABIL'] + $diasProgramados['NO_HABIL'] < $periodo->DIAS_PEND) {
+                        $periodoMenor = $periodo->PERIODO;
+                        $infoCompleta = $periodo;
+                        break;
+                    }
+                }
+
+                // Si no se encontró un período con días incompletos, tomar el primer período
+                if ($periodoMenor === null) {
+                    $periodoMenor = $periodosConDias[0]->PERIODO;
+                    $infoCompleta = $periodosConDias[0];
                 }
             }
-
-            // Si no se encontró un período con días incompletos, tomar el primer período
-            if ($periodoMenor === null) {
-                $periodoMenor = $periodosConDias[0]->PERIODO;
-                $infoCompleta = $periodosConDias[0];
-            }
         }
-    }
 
-    // Retornar el período y su información
-    return [
-        'periodo' => $periodoMenor,
-        'info' => $infoCompleta
-    ];
-}
-
-// Método auxiliar para consultar días programados
-private function _consultarDiasProgramados($dni, $periodo)
-{
-    $this->intra_db->setCampos("sum(num_dias - dbo.FUNC_NUM_DAYS_NO_HABIL(id_empresa,id_sucursal,fecha_inicio,fecha_fin)) AS HABIL, sum(dbo.FUNC_NUM_DAYS_NO_HABIL(id_empresa,id_sucursal,fecha_inicio,fecha_fin)) AS NO_HABIL");
-    $this->intra_db->setTabla("TBINT_VACACIONES");
-    $this->intra_db->setCondicionString("id_solicitante = (SELECT USUINIDUSUARIO FROM [DBACINHOUSE_TEST].[dbo].[TBSEGMAEUSUARIO] WHERE USUVCDNI = '$dni') AND periodo = '$periodo' AND id_empresa = '01' AND id_sucursal = '01' AND eliminado = 0 AND subperiodo in (1,2)");
-    
-    $resultado = $this->intra_db->Listar();
-
-    // Si no hay resultado, devolver un array con ceros
-    if (empty($resultado)) {
+        // Retornar el período y su información
         return [
-            'HABIL' => 0, 
-            'NO_HABIL' => 0
+            'periodo' => $periodoMenor,
+            'info' => $infoCompleta
         ];
     }
 
-    // Devolver el primer resultado
-    return [
-        'HABIL' => $resultado[0]->HABIL ?? 0, 
-        'NO_HABIL' => $resultado[0]->NO_HABIL ?? 0
-    ];
-}
+    // Método auxiliar para consultar días programados
+    private function _consultarDiasProgramados($dni, $periodo)
+    {
+        $this->intra_db->setCampos("sum(num_dias - dbo.FUNC_NUM_DAYS_NO_HABIL(id_empresa,id_sucursal,fecha_inicio,fecha_fin)) AS HABIL, sum(dbo.FUNC_NUM_DAYS_NO_HABIL(id_empresa,id_sucursal,fecha_inicio,fecha_fin)) AS NO_HABIL");
+        $this->intra_db->setTabla("TBINT_VACACIONES");
+        $this->intra_db->setCondicionString("id_solicitante = (SELECT USUINIDUSUARIO FROM [DBACINHOUSE_TEST].[dbo].[TBSEGMAEUSUARIO] WHERE USUVCDNI = '$dni') AND periodo = '$periodo' AND id_empresa = '01' AND id_sucursal = '01' AND eliminado = 0 AND subperiodo in (1,2)");
+
+        $resultado = $this->intra_db->Listar();
+
+        // Si no hay resultado, devolver un array con ceros
+        if (empty($resultado)) {
+            return [
+                'HABIL' => 0,
+                'NO_HABIL' => 0
+            ];
+        }
+
+        // Devolver el primer resultado
+        return [
+            'HABIL' => $resultado[0]->HABIL ?? 0,
+            'NO_HABIL' => $resultado[0]->NO_HABIL ?? 0
+        ];
+    }
 
 
     public function _obtenerCantidadDiasPeriodo($idSolicitante)
@@ -1765,6 +1765,12 @@ private function _consultarDiasProgramados($dni, $periodo)
             }
         } else {
             // La solicitud va al subperíodo 1
+            if($validacionSub1['siguiente_solicitud_minimo'] == 0) {
+                $resultado['es_valido'] = false;
+                $resultado['mensaje'] = $validacionSub1['mensaje'];
+                return $resultado;
+            }
+
             $resultado['subperiodo'] = 1;
 
             // Verificar si cumple con el mínimo de días para subperíodo 1
@@ -1877,6 +1883,22 @@ private function _consultarDiasProgramados($dni, $periodo)
             'subperiodo_completo' => $subperiodoCompleto,
             'es_valido' => true
         ];
+        // // Añadir información detallada sobre días
+        $resultado['detalles'] = [
+            'dias_habiles_ofisis' => $diasHabilesOfisis,
+            'dias_no_habiles_ofisis' => $diasNoHabilesOfisis,
+            'dias_habiles_programados' => $diasHabilesProgramados,
+            'dias_no_habiles_programados' => $diasNoHabilesProgramados,
+            'total_dias_habiles' => $totalDiasHabiles,
+            'total_dias_no_habiles' => $totalDiasNoHabiles,
+            'total_dias_consumidos' => $totalDiasOfisisYProgramadas,
+            'dias_habiles_solicitud' => $diasHabilesSolicitud,
+            'dias_no_habiles_solicitud' => $diasNoHabilesSolicitud,
+            'dias_habiles_restantes' => $diasHabilesRestantes,
+            'dias_no_habiles_restantes' => $diasNoHabilesRestantes,
+            'total_dias_restantes' => $diasRestantesParaElUsuario
+        ];
+
 
         // VALIDACIÓN 1: Verificar si la solicitud excede el total de días disponibles
         if ($totalDiasConSolicitud > $TOTAL_DIAS_VACACIONES) {
@@ -1901,22 +1923,23 @@ private function _consultarDiasProgramados($dni, $periodo)
 
             // Si quedarían días hábiles pero no suficientes días no hábiles restantes
             if ($diasHabilesRestantesDespuesSolicitud > 0 && $diasNoHabilesRestantesDespuesSolicitud > 0) {
+
                 // Verificar si la proporción permitiría cumplir con los 8 días no hábiles
                 if ($diasHabilesRestantesDespuesSolicitud < $diasNoHabilesRestantesDespuesSolicitud) {
                     $resultado['es_valido'] = false;
-                    $resultado['mensaje'] = "Después de esta solicitud quedarían {$diasHabilesRestantesDespuesSolicitud} días hábiles y {$diasNoHabilesRestantesDespuesSolicitud} días no hábiles. " .
+                    $resultado['mensaje'] = "Después de esta solicitud quedarían {$diasHabilesRestantesDespuesSolicitud} día(s) hábil(es) y {$diasNoHabilesRestantesDespuesSolicitud} días no hábiles. " .
                         "Debe incluir más días no hábiles en esta solicitud para mantener el balance requerido.";
                     return $resultado;
                 }
             }
 
             // Si no quedarían días no hábiles pero sí días hábiles
-            if ($diasNoHabilesRestantesDespuesSolicitud <= 0 && $diasHabilesRestantesDespuesSolicitud > 0) {
-                $resultado['es_valido'] = false;
-                $resultado['mensaje'] = "Esta solicitud agotaría los días no hábiles pero aún quedarían {$diasHabilesRestantesDespuesSolicitud} días hábiles. " .
-                    "Debe incluir más días no hábiles en su solicitud.";
-                return $resultado;
-            }
+            // if ($diasNoHabilesRestantesDespuesSolicitud <= 0 && $diasHabilesRestantesDespuesSolicitud > 0) {
+            //     $resultado['es_valido'] = false;
+            //     $resultado['mensaje'] = "Esta solicitud agotaría los días no hábiles pero aún quedarían {$diasHabilesRestantesDespuesSolicitud} días hábiles. " .
+            //         "Debe incluir más días no hábiles en su solicitud.";
+            //     return $resultado;
+            // }
         }
 
         // Si el subperíodo está completo, modificamos el mensaje
@@ -1928,9 +1951,18 @@ private function _consultarDiasProgramados($dni, $periodo)
 
         // Lógica para subperíodo no completo
         if (count($solicitudes) == 0) {
-            // No hay solicitudes en subperíodo 1
-            $resultado['siguiente_solicitud_minimo'] = 7;
-            $resultado['mensaje'] = "La primera solicitud debe ser de mínimo 7 días.";
+            
+            if($totalDiasOfisis > 23){
+                $diasRestantes = 30 - $totalDiasOfisis;
+                $resultado['siguiente_solicitud_minimo'] = 0;
+                // var_dump("entre aqui");
+                // die();
+                $resultado['mensaje'] = "La solicitud debe ser como mínimo de 7 días (usted cuenta con {$diasRestantes}), por favor comuníquese con RRHH para solicitar vacaciones coordinadas.";
+            }else {
+                // No hay solicitudes en subperíodo 1
+                $resultado['siguiente_solicitud_minimo'] = 7;
+                $resultado['mensaje'] = "La primera solicitud debe ser de mínimo 7 días.";
+            }
         } else if (count($solicitudes) == 1 && $totalDias == 7) {
             // Solo hay una solicitud por exactamente 7 días
             $resultado['cumple_primera_solicitud'] = true;
@@ -1948,22 +1980,6 @@ private function _consultarDiasProgramados($dni, $periodo)
             $resultado['mensaje'] .= " Nota: El subperíodo 1 tiene {$totalDias} días asignados, superando el límite teórico de {$LIMITE_SUBPERIODO1} días por {$resultado['exceso']} días, lo cual es válido según las reglas establecidas.";
         }
 
-        // // Añadir información detallada sobre días
-        // $resultado['detalles'] = [
-        //     'dias_habiles_ofisis' => $diasHabilesOfisis,
-        //     'dias_no_habiles_ofisis' => $diasNoHabilesOfisis,
-        //     'dias_habiles_programados' => $diasHabilesProgramados,
-        //     'dias_no_habiles_programados' => $diasNoHabilesProgramados,
-        //     'total_dias_habiles' => $totalDiasHabiles,
-        //     'total_dias_no_habiles' => $totalDiasNoHabiles,
-        //     'total_dias_consumidos' => $totalDiasOfisisYProgramadas,
-        //     'dias_habiles_solicitud' => $diasHabilesSolicitud,
-        //     'dias_no_habiles_solicitud' => $diasNoHabilesSolicitud,
-        //     'dias_habiles_restantes' => $diasHabilesRestantes,
-        //     'dias_no_habiles_restantes' => $diasNoHabilesRestantes,
-        //     'total_dias_restantes' => $diasRestantesParaElUsuario
-        // ];
-
         return $resultado;
     }
     public function validarSubperiodo2($idUsuario, $empresa, $periodo, $fechaInicio, $fechaFin)
@@ -1971,6 +1987,7 @@ private function _consultarDiasProgramados($dni, $periodo)
         // Primero, verificamos el exceso del subperíodo 1
         $validacionSub1 = $this->validarSubperiodo1($idUsuario, $periodo, $empresa, $fechaInicio, $fechaFin);
         $excesoSubperiodo1 = $validacionSub1['exceso']; // Días que exceden el límite de 15
+        $diasFlex = $this->getDiasFlexibles();
 
         // Obtener solicitudes existentes en el subperíodo 2
         $this->intra_db->setCampos("id_vacacion, NUM_DIAS as dias");
@@ -1987,15 +2004,29 @@ private function _consultarDiasProgramados($dni, $periodo)
         // Inicializar variables
         $totalDias = 0;
         $solicitudes = [];
+        $diasHabilesSubperiodo2 = 0;
+        $diasNoHabilesSubperiodo2 = 0;
 
         // Verificar si el resultado es null o vacío
         if (empty($resultadoBD)) {
             $resultadoBD = [];
         }
 
+        // Procesar resultados existentes del subperíodo 2
         if (is_array($resultadoBD)) {
             foreach ($resultadoBD as $item) {
                 if (is_object($item)) {
+                    // Obtener fechas de la solicitud
+                    $fechaInicioSol = $item->fecha_inicio ?? null;
+                    $fechaFinSol = $item->fecha_fin ?? null;
+
+                    // Calcular días hábiles y no hábiles si tenemos las fechas
+                    if ($fechaInicioSol && $fechaFinSol) {
+                        $diasPorTipo = $this->_sumarDiasPorTipo($fechaInicioSol, $fechaFinSol);
+                        $diasHabilesSubperiodo2 += $diasPorTipo['habil'];
+                        $diasNoHabilesSubperiodo2 += $diasPorTipo['no_habil'];
+                    }
+
                     // Convertir objeto a array para consistencia
                     $solicitud = [
                         'id_vacacion' => $item->id_vacacion,
@@ -2004,6 +2035,8 @@ private function _consultarDiasProgramados($dni, $periodo)
                     $solicitudes[] = $solicitud;
                     $totalDias += intval($item->dias);
                 } elseif (is_array($item)) {
+                    // Aquí deberíamos manejar el caso donde item es un array
+                    // pero necesitaríamos adaptar la lógica según la estructura
                     $solicitudes[] = $item;
                     $totalDias += intval($item['dias']);
                 }
@@ -2021,6 +2054,7 @@ private function _consultarDiasProgramados($dni, $periodo)
             $disponibilidadReal = 0;
         }
 
+        // Obtener días programados y de Ofisis
         $vacacionesProgramadas = $this->obtenerVacacionesProgramadas($idUsuario, $periodo);
         $diasHabilesProgramados = 0;
         $diasNoHabilesProgramados = 0;
@@ -2029,60 +2063,142 @@ private function _consultarDiasProgramados($dni, $periodo)
             $diasNoHabilesProgramados = $vacacionesProgramadas[0]->NO_HABIL ?? 0;
         }
 
-        // Obtener y validar vacaciones Ofisis
+        // Obtener vacaciones Ofisis
         $vacacionesOfisis = $this->obtenerVacacionesOfisis($idUsuario, $empresa, $periodo);
         $diasHabilesOfisis = 0;
         $diasNoHabilesOfisis = 0;
-
         if (!empty($vacacionesOfisis) && isset($vacacionesOfisis[0])) {
             $diasHabilesOfisis = $vacacionesOfisis[0]->DIAS_HABILES_OFISIS ?? 0;
             $diasNoHabilesOfisis = $vacacionesOfisis[0]->DIAS_NO_HABILES_OFISIS ?? 0;
         }
 
-        // Validar cuantas días hábiles y no hábiles se tienen en total
-        $totalDiasHabiles = $diasHabilesProgramados + $diasHabilesOfisis;
-        $totalDiasNoHabiles = $diasNoHabilesProgramados + $diasNoHabilesOfisis;
-        $totalDiasOfisis = $diasHabilesOfisis + $diasNoHabilesOfisis;
-        
-        // Resultado de la validación
-        $resultado = [
-            'dias_usados' => $totalDias,
-            'dias_disponibles' => $disponibilidadReal - $totalDias - $totalDiasOfisis > 0 ? $disponibilidadReal - $totalDias - $totalDiasOfisis : 0,
-            'solicitudes' => $solicitudes,
-            'es_valido' => true,
-            'mensaje' => empty($solicitudes) ? 'No se han registrado solicitudes en el subperiodo 2' : '',
-            'vacio' => empty($solicitudes), // Indicador explícito si no hay solicitudes
-            'exceso_subperiodo1' => $excesoSubperiodo1, // Guardar el exceso del subperíodo 1
-            'limite_original' => $LIMITE_SUBPERIODO2, // Límite original
-            'limite_ajustado' => $disponibilidadReal - $totalDiasOfisis // Límite ajustado después del exceso
-        ];
+        // Calcular totales de días hábiles y no hábiles consumidos
+        $diasHabilesSubperiodo1 = $validacionSub1['detalles']['dias_habiles_programados'] ?? 0;
+        $diasNoHabilesSubperiodo1 = $validacionSub1['detalles']['dias_no_habiles_programados'] ?? 0;
 
+        // Total de días hábiles y no hábiles usados (ambos subperíodos + Ofisis)
+        $totalDiasHabiles = $diasHabilesSubperiodo1 + $diasHabilesSubperiodo2 + $diasHabilesOfisis;
+        $totalDiasNoHabiles = $diasNoHabilesSubperiodo1 + $diasNoHabilesSubperiodo2 + $diasNoHabilesOfisis;
+        // Constantes
         $TOTAL_DIAS_NO_HABILES_REQUERIDOS = 8;
         $TOTAL_DIAS_HABILES_REQUERIDOS = 22; // 30 - 8
+        $TOTAL_DIAS_VACACIONES = 30;
+
+        // Calcular días restantes
+        $diasHabilesRestantes = $TOTAL_DIAS_HABILES_REQUERIDOS - $totalDiasHabiles;
+        $diasNoHabilesRestantes = $TOTAL_DIAS_NO_HABILES_REQUERIDOS - $totalDiasNoHabiles;
+        $diasTotalesRestantes = $diasHabilesRestantes + $diasNoHabilesRestantes;
 
         // Calcular días de la solicitud actual
         $diasSolicitudActual = $this->_sumarDiasPorTipo($fechaInicio, $fechaFin);
         $diasHabilesSolicitud = $diasSolicitudActual['habil'];
         $diasNoHabilesSolicitud = $diasSolicitudActual['no_habil'];
+        $diasTotalesSolicitud = $diasHabilesSolicitud + $diasNoHabilesSolicitud;
 
-        // Verificar si con esta solicitud se excedería el límite de días hábiles permitidos
-        $totalDiasHabilesConSolicitud = $totalDiasHabiles + $diasHabilesSolicitud;
-        $totalDiasNoHabilesConSolicitud = $totalDiasNoHabiles + $diasNoHabilesSolicitud;
-        $diasNoHabilesFaltantesDespuesSolicitud = $TOTAL_DIAS_NO_HABILES_REQUERIDOS - $totalDiasNoHabilesConSolicitud;
-        // var_dump($totalDiasHabilesConSolicitud);
-        // die();
-        // Si se excedería el límite de días hábiles y aún faltan días no hábiles por cumplir
-        if ($totalDiasHabilesConSolicitud > $TOTAL_DIAS_HABILES_REQUERIDOS || $diasNoHabilesFaltantesDespuesSolicitud > 0) {
+        // Calcular disponibilidad después de la solicitud
+        $diasHabilesRestantesDespuesSolicitud = $diasHabilesRestantes - $diasHabilesSolicitud;
+        $diasNoHabilesRestantesDespuesSolicitud = $diasNoHabilesRestantes - $diasNoHabilesSolicitud;
+        $diasTotalesRestantesDespuesSolicitud = $diasTotalesRestantes - $diasTotalesSolicitud;
+
+        // Inicializar resultado
+        $resultado = [
+            'dias_usados' => $totalDias,
+            'dias_disponibles' => $disponibilidadReal - $totalDias,
+            'solicitudes' => $solicitudes,
+            'es_valido' => true,
+            'mensaje' => empty($solicitudes) ? 'No se han registrado solicitudes en el subperiodo 2' : '',
+            'vacio' => empty($solicitudes),
+            'exceso_subperiodo1' => $excesoSubperiodo1,
+            'limite_original' => $LIMITE_SUBPERIODO2,
+            'limite_ajustado' => $disponibilidadReal
+        ];
+
+        // === VALIDACIONES ===
+
+        // Validación 1: Verificar si la solicitud excede los días totales disponibles
+        if ($diasTotalesSolicitud > $diasTotalesRestantes) {
             $resultado['es_valido'] = false;
-            $resultado['mensaje'] = "Por favor seleccione otro rango de fecha que incluya más fines de semana. " .
-                "Falta incluir {$diasNoHabilesFaltantesDespuesSolicitud} días no hábiles para cumplir con el mínimo requerido.";
-            // Sugerencia adicional
-            if ($diasNoHabilesFaltantesDespuesSolicitud == 1) {
-                $resultado['mensaje'] .= " Considere incluir al menos un día más de fin de semana en su solicitud.";
-            } else {
-                $resultado['mensaje'] .= " Considere incluir al menos {$diasNoHabilesFaltantesDespuesSolicitud} días más de fin de semana en su solicitud.";
+            $resultado['mensaje'] = "La solicitud excede los días disponibles. Total disponible: {$diasTotalesRestantes} días.";
+            return $resultado;
+        }
+
+        // Validación 2: Verificar si la solicitud excede los días hábiles disponibles
+        if ($diasHabilesSolicitud > $diasHabilesRestantes) {
+            $resultado['es_valido'] = false;
+            $resultado['mensaje'] = "La solicitud excede los días hábiles disponibles. Disponible: {$diasHabilesRestantes} días hábiles.";
+            return $resultado;
+        }
+
+        // Validación 3: Verificar requerimiento de días no hábiles (Enfoque flexible)
+        // Determinar cuántos días no hábiles se deberían incluir en esta solicitud
+        $diasNoHabilesRequeridos = 0;
+
+        // Si quedan muchos días totales, aplicar una proporción para días no hábiles
+        if ($diasTotalesRestantes > 10) {
+            // Aproximadamente mantener la proporción 22:8 (hábiles:no hábiles)
+            $proporcionIdeal = $TOTAL_DIAS_NO_HABILES_REQUERIDOS / $TOTAL_DIAS_VACACIONES; // 8/30 = 0.267
+            $diasNoHabilesIdeales = round($diasTotalesSolicitud * $proporcionIdeal);
+            // Si hay suficientes días no hábiles restantes, sugerir incluir algunos
+            if ($diasNoHabilesRestantes > 0 && $diasNoHabilesSolicitud < $diasNoHabilesIdeales) {
+                $resultado['es_valido'] = false;
+                $resultado['mensaje'] = "Recomendación: Para mantener un balance adecuado, considere incluir al menos {$diasNoHabilesIdeales} día(s) no hábil(es) en su solicitud.";
+                return $resultado;
             }
-            // var_dump($resultado);
+        }
+        // Si quedan pocos días, ser más estrictos con el requerimiento
+        else {
+            // Verificar si después de esta solicitud quedarían días hábiles pero no no-hábiles
+            if ($diasHabilesRestantesDespuesSolicitud > 0 && $diasNoHabilesRestantesDespuesSolicitud == 0) {
+                // Si esta solicitud agota los días no hábiles pero aún quedan hábiles
+                if ($diasNoHabilesSolicitud > 0 && $diasNoHabilesRestantes == $diasNoHabilesSolicitud) {
+                    // Está bien, está agotando los días no hábiles de manera equilibrada
+                } else {
+                    // No está incluyendo suficientes días no hábiles
+                    $diasNoHabilesRequeridos = min($diasNoHabilesRestantes, $diasNoHabilesSolicitud + 2);
+
+                    $resultado['es_valido'] = false;
+                    $resultado['mensaje'] = "Debe incluir más días no hábiles en su solicitud. " .
+                        "Después de esta solicitud quedarán {$diasHabilesRestantesDespuesSolicitud} días hábiles pero 0 días no hábiles. " .
+                        "Incluya al menos {$diasNoHabilesRequeridos} días no hábiles.";
+                    return $resultado;
+                }
+            }
+            // Si quedarían muy pocos días no hábiles para muchos días hábiles
+            if ($diasHabilesRestantesDespuesSolicitud > 5 && $diasNoHabilesRestantesDespuesSolicitud < 2) {
+                $diasNoHabilesMinimos = min($diasNoHabilesRestantes, 2);
+
+                if ($diasNoHabilesSolicitud < $diasNoHabilesMinimos) {
+                    $resultado['es_valido'] = false;
+                    $resultado['mensaje'] = "Debe incluir al menos {$diasNoHabilesMinimos} días no hábiles en su solicitud " .
+                        "para mantener un balance adecuado con los días hábiles restantes.";
+                    return $resultado;
+                }
+            }
+        }
+        // Validación extra: Sugerir incluir fines de semana si está agotando días hábiles
+        if ($diasHabilesSolicitud > 0 && $diasNoHabilesSolicitud == 0) {
+            // Si después de esta solicitud quedará una proporción desequilibrada
+            // Por ejemplo: 3 o menos días hábiles pero 2 o más días no hábiles pendientes
+            if ($diasHabilesRestantesDespuesSolicitud <= 3 && $diasNoHabilesRestantesDespuesSolicitud >= 2) {
+                $resultado['es_valido'] = false;
+                $resultado['mensaje'] = "Para evitar que le queden solo días no hábiles pendientes, " .
+                    "le sugerimos incluir al menos {$diasNoHabilesRestantesDespuesSolicitud} días no hábiles " .
+                    "(fines de semana) en su solicitud actual. ";
+                return $resultado;
+            }
+        }
+
+        // Validación 4: Si ya no quedan días hábiles...
+        if ($diasHabilesRestantes == 0 && $diasHabilesSolicitud > 0) {
+            $resultado['es_valido'] = false;
+            $resultado['mensaje'] = "No quedan días hábiles disponibles. Solo puede solicitar los {$diasNoHabilesRestantes} días no hábiles restantes.";
+            return $resultado;
+        }
+
+        // Validación 5: Si ya no quedan días no hábiles, permitir tomar solo días hábiles
+        if ($diasNoHabilesRestantes == 0 && $diasNoHabilesSolicitud > 0) {
+            $resultado['es_valido'] = false;
+            $resultado['mensaje'] = "No quedan días no hábiles disponibles. Solo puede solicitar los {$diasHabilesRestantes} días hábiles restantes.";
             return $resultado;
         }
 
