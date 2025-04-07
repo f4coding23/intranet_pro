@@ -1010,6 +1010,7 @@ class VacacionModel extends ModelBase
     }
     private function _modificarSolicitudVacacion($reg, $modalidad = 1)
     {
+        //MODIFICAR AQUI EL EDITAR VACACIONES
         $regSolicitud = $this->getInfoVacacion($reg['idSolicitud']);
         $arrEstadosToReset = array(3, 4);
         $estado = $regSolicitud[0]->id_vaca_estado;
@@ -1055,6 +1056,80 @@ class VacacionModel extends ModelBase
         }
 
         $infoSucursal = $this->sessionObj->getInfoFromSucursalByEmpresa($userInfoOfisis[0]->CO_EMPR, 1);
+
+
+
+        /* ============================================================= */
+        // Obtener y validar vacaciones Ofisis
+        $periodo = $this->getPeriodoEditar($reg['idSolicitud']);
+        
+        // OBTENER DIAS DE OFISIS
+        $vacacionesOfisis = $this->obtenerVacacionesOfisis($reg['cboSolicitante'], $userInfoOfisis[0]->CO_EMPR, $periodo[0]->periodo);
+        $diasHabilesOfisis = 0;
+        $diasNoHabilesOfisis = 0;
+
+        if (!empty($vacacionesOfisis) && isset($vacacionesOfisis[0])) {
+            $diasHabilesOfisis = $vacacionesOfisis[0]->DIAS_HABILES_OFISIS ?? 0;
+            $diasNoHabilesOfisis = $vacacionesOfisis[0]->DIAS_NO_HABILES_OFISIS ?? 0;
+        }
+
+        // Validar cuantas días hábiles y no hábiles se tienen en total
+        // $totalDiasHabiles = $diasHabilesProgramados + $diasHabilesOfisis;
+        // $totalDiasNoHabiles = $diasNoHabilesProgramados + $diasNoHabilesOfisis;
+        $totalDiasOfisis = $diasHabilesOfisis + $diasNoHabilesOfisis;
+        
+
+        // OBTENER DIAS DE LA SOLICITUD
+        $diasSolicitudActual = $this->_sumarDiasPorTipo($reg['txtFechaInicio'], $reg['txtFechaFin']);
+        $diasHabilesSolicitud = $diasSolicitudActual['habil'];
+        $diasNoHabilesSolicitud = $diasSolicitudActual['no_habil'];
+
+        // Verificar si con esta solicitud se excedería el límite de días totales
+        
+        // $totalDiasNoHabilesConSolicitud = $totalDiasNoHabiles + $diasNoHabilesSolicitud;
+        $totalDiasSolicitud = $diasHabilesSolicitud + $diasNoHabilesSolicitud;
+
+        // OBTENER DIAS PROGRAMADOS
+        $vacacionesProgramadas = $this->obtenerVacacionesProgramadasEditar($reg['cboSolicitante'], $periodo[0]->periodo, $reg['idSolicitud']);
+        $diasHabilesProgramados = 0;
+        $diasNoHabilesProgramados = 0;
+        if (!empty($vacacionesProgramadas) && isset($vacacionesProgramadas[0])) {
+            $diasHabilesProgramados = $vacacionesProgramadas[0]->HABIL ?? 0;
+            $diasNoHabilesProgramados = $vacacionesProgramadas[0]->NO_HABIL ?? 0;
+        }
+
+        $totalDiasHabiles = $diasHabilesProgramados + $diasHabilesOfisis;
+        $totalDiasHabilesConSolicitud = $totalDiasHabiles + $diasHabilesSolicitud;
+        $totalDiasOfisisYProgramadas = $totalDiasOfisis + $diasHabilesProgramados + $diasNoHabilesProgramados;
+        $totalDiasConSolicitud = $totalDiasOfisisYProgramadas + $totalDiasSolicitud;
+
+        // Constantes para los límites
+        $TOTAL_DIAS_NO_HABILES_REQUERIDOS = 8;
+        $TOTAL_DIAS_HABILES_REQUERIDOS = 22; // 30 - 8
+        $TOTAL_DIAS_VACACIONES = 30;
+
+        // Días restantes antes de la solicitud
+        $diasRestantesParaElUsuario = $TOTAL_DIAS_VACACIONES - $totalDiasOfisisYProgramadas;
+
+        // VALIDACIÓN 1: Verificar si la solicitud excede el total de días disponibles
+        if ($totalDiasConSolicitud > $TOTAL_DIAS_VACACIONES) {
+            $resultado['es_valido'] = false;
+            $resultado['mensaje'] = "La solicitud excede el límite permitido. Días disponibles: {$diasRestantesParaElUsuario}.";
+            return $resultado;
+        }
+
+        // VALIDACIÓN 2: Verificar si la solicitud excede los días hábiles disponibles
+        if ($totalDiasHabilesConSolicitud > $TOTAL_DIAS_HABILES_REQUERIDOS) {
+            $resultado['es_valido'] = false;
+            $resultado['mensaje'] = "La solicitud excede los días hábiles permitidos. Días hábiles disponibles: {$diasHabilesRestantes}.";
+            return $resultado;
+        }
+
+
+        /* ============================================================= */
+
+
+
 
         $sqlQuery = "UPDATE TBINT_VACACIONES SET
         [id_vaca_condicion] = " . $reg['cboCondicion'] . ",
@@ -1505,6 +1580,18 @@ class VacacionModel extends ModelBase
         $qryResult = $this->intra_db->Listar();
         return $qryResult;
     }
+
+    public function getPeriodoEditar($idVacacion)
+    {
+        $this->intra_db->usarUTF8();
+        $this->intra_db->setCampos("periodo");
+        $this->intra_db->setTabla("TBINT_VACACIONES");
+        $this->intra_db->setCondicionExpr("=", "id_vacacion", $idVacacion);
+
+        $qryResult = $this->intra_db->Listar();
+        return $qryResult;
+    }
+
     // public function _obtenerPeriodoActual($dni)
     // {
     //     // Preparar variables
@@ -1708,6 +1795,23 @@ class VacacionModel extends ModelBase
 
         return $qryResult;
     }
+
+    public function obtenerVacacionesProgramadasEditar($idSoliciante, $periodo, $idVacacion)
+    {
+        $this->intra_db->setCampos('ISNULL(sum(num_dias - dbo.FUNC_NUM_DAYS_NO_HABIL(id_empresa,id_sucursal,fecha_inicio,fecha_fin)),0) AS HABIL, ISNULL(sum(dbo.FUNC_NUM_DAYS_NO_HABIL(id_empresa,id_sucursal,fecha_inicio,fecha_fin)),0) AS NO_HABIL');
+        $this->intra_db->setTabla("TBINT_VACACIONES");
+        $this->intra_db->setCondicion("=", "id_solicitante", $idSoliciante);
+        $this->intra_db->setCondicion("=", "periodo", $periodo);
+        $this->intra_db->setCondicion("=", "id_empresa", '01');
+        $this->intra_db->setCondicion("=", "id_sucursal", 1);
+        $this->intra_db->setCondicion("=", "eliminado", 0);
+        $this->intra_db->setCondicion("<>", "id_vacacion", $idVacacion);
+        $this->intra_db->setCondicionString('subperiodo in (1,2)');
+        $qryResult = $this->intra_db->Listar();
+
+        return $qryResult;
+    }
+
     public function determinarYValidarSolicitud($idUsuario, $periodo, $fechaInicio, $fechaFin, $diasSolicitados, $empresa, $condicion = null)
     {
         if ($condicion == 3) {
@@ -1953,10 +2057,8 @@ class VacacionModel extends ModelBase
         if (count($solicitudes) == 0) {
             
             if($totalDiasOfisis > 23){
-                $diasRestantes = 30 - $totalDiasOfisis;
+                $diasRestantes = 30 - $totalDiasOfisisYProgramadas;
                 $resultado['siguiente_solicitud_minimo'] = 0;
-                // var_dump("entre aqui");
-                // die();
                 $resultado['mensaje'] = "La solicitud debe ser como mínimo de 7 días (usted cuenta con {$diasRestantes}), por favor comuníquese con RRHH para solicitar vacaciones coordinadas.";
             }else {
                 // No hay solicitudes en subperíodo 1
