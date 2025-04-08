@@ -1062,6 +1062,7 @@ class VacacionModel extends ModelBase
         /* ============================================================= */
         // Obtener y validar vacaciones Ofisis
         $periodo = $this->getPeriodoEditar($reg['idSolicitud']);
+        $subPeriodo = $this->getSubPeriodoEditar($reg['idSolicitud']);
         
         // OBTENER DIAS DE OFISIS
         $vacacionesOfisis = $this->obtenerVacacionesOfisis($reg['cboSolicitante'], $userInfoOfisis[0]->CO_EMPR, $periodo[0]->periodo);
@@ -1110,6 +1111,7 @@ class VacacionModel extends ModelBase
 
         // Días restantes antes de la solicitud
         $diasRestantesParaElUsuario = $TOTAL_DIAS_VACACIONES - $totalDiasOfisisYProgramadas;
+        $diasHabilesRestantes = $TOTAL_DIAS_HABILES_REQUERIDOS - $totalDiasHabiles;
 
         // VALIDACIÓN 1: Verificar si la solicitud excede el total de días disponibles
         if ($totalDiasConSolicitud > $TOTAL_DIAS_VACACIONES) {
@@ -1125,6 +1127,40 @@ class VacacionModel extends ModelBase
             return $resultado;
         }
 
+        // PERTENECE AL SUBPERIODO 1 omar
+        if($subPeriodo[0]->subperiodo == '1') {
+            // Validar si la solicitud excede los días hábiles disponibles
+            $countSubPeriodo1 = $this->getExistSubPeriodo1($reg['cboSolicitante'], $periodo[0]->periodo, $reg['idSolicitud']);
+            if ($countSubPeriodo1 == 0) {
+                if($totalDiasSolicitud < 7){
+                    $resultado['es_valido'] = false;
+                    $resultado['mensaje'] = "La solicitud debe ser por un mínimo de 7 días.";
+                    return $resultado;
+                }
+            }else if($countSubPeriodo1 == 7){
+                if($totalDiasSolicitud <= 7){
+                    $resultado['es_valido'] = false;
+                    $resultado['mensaje'] = "La solicitud debe ser por un mínimo de 8 días.";
+                    return $resultado;
+                }
+            }else {
+                if($totalDiasSolicitud < 7){
+                    $resultado['es_valido'] = false;
+                    $resultado['mensaje'] = "La solicitud debe ser por un mínimo de 7 días.";
+                    return $resultado;
+                }
+            }
+        }else if($subPeriodo[0]->subperiodo == '2') {
+            if ($totalDiasHabilesConSolicitud > $TOTAL_DIAS_HABILES_REQUERIDOS) {
+                $resultado['es_valido'] = false;
+                $resultado['mensaje'] = "La solicitud excede los días hábiles permitidos. Días hábiles disponibles: {$diasHabilesRestantes}.";
+                return $resultado;
+            }
+        } else {
+            $resultado['es_valido'] = false;
+            $resultado['mensaje'] = "No se puede editar la solicitud, comuniquese con RRHH.";
+            return $resultado;
+        }
 
         /* ============================================================= */
 
@@ -1591,6 +1627,18 @@ class VacacionModel extends ModelBase
         $qryResult = $this->intra_db->Listar();
         return $qryResult;
     }
+
+    public function getSubPeriodoEditar($idVacacion)
+    {
+        $this->intra_db->usarUTF8();
+        $this->intra_db->setCampos("subperiodo");
+        $this->intra_db->setTabla("TBINT_VACACIONES");
+        $this->intra_db->setCondicionExpr("=", "id_vacacion", $idVacacion);
+
+        $qryResult = $this->intra_db->Listar();
+        return $qryResult;
+    }
+
 
     // public function _obtenerPeriodoActual($dni)
     // {
@@ -2455,5 +2503,35 @@ class VacacionModel extends ModelBase
             }
         }
         return $resultado;
+    }
+
+    public function getExistSubPeriodo1($idSolicitante, $periodo, $idVacacion)
+    {
+        $this->intra_db->usarUTF8();
+        
+        $sqlQuery = "SELECT 
+            ISNULL(
+                (SELECT 
+                    SUM(num_dias) 
+                FROM 
+                    TBINT_VACACIONES
+                WHERE 
+                    id_solicitante = '$idSolicitante' AND
+                    periodo = '$periodo' AND
+                    eliminado = 0 AND
+                    id_vacacion <> '$idVacacion' AND
+                    subperiodo = '1'),
+                0
+            ) AS num_dias";
+        
+        // Ejecutar la consulta SQL
+        $resultado = $this->intra_db->Query($sqlQuery);
+        
+        // Verificar si hay resultados y retornar el valor de num_dias
+        if (!empty($resultado) && isset($resultado[0]->num_dias)) {
+            return $resultado[0]->num_dias;
+        }
+        
+        return 0;
     }
 }
