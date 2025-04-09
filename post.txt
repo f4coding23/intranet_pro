@@ -1,0 +1,9 @@
+var_dump($_POST);
+array(10) { ["cboSolicitante"]=> string(4) "1804" ["txtFechaIngreso"]=> string(10) "26/10/2016" ["cboCondicion"]=> string(1) "1" ["txtCantidadDias"]=> string(2) "11" ["txtFechaInicio"]=> string(10) "2025-10-14" ["txtFechaFin"]=> string(10) "2025-10-24" ["programadosPrevios"]=> string(1) "0" ["idSolicitud"]=> string(0) "" ["tblConsolidado"]=> string(75) "{"trunco":13.67,"ganado":22,"vencido":43,"programado":0,"por_programar":65}" ["modalidad"]=> string(1) "1" }
+
+var_dump($status);
+array(10) { ["cboSolicitante"]=> string(4) "1804" ["txtFechaIngreso"]=> string(10) "26/10/2016" ["cboCondicion"]=> string(1) "1" ["txtCantidadDias"]=> string(2) "11" ["txtFechaInicio"]=> string(10) "2025-10-14" ["txtFechaFin"]=> string(10) "2025-10-24" ["programadosPrevios"]=> string(1) "0" ["idSolicitud"]=> string(0) "" ["tblConsolidado"]=> string(75) "{"trunco":13.67,"ganado":22,"vencido":43,"programado":0,"por_programar":65}" ["modalidad"]=> string(1) "1" }
+
+var_dump($input->post(NULL));
+array(10) { ["cboSolicitante"]=> string(4) "1804" ["txtFechaIngreso"]=> string(10) "26/10/2016" ["cboCondicion"]=> string(1) "1" ["txtCantidadDias"]=> string(2) "11" ["txtFechaInicio"]=> string(10) "2025-10-14" ["txtFechaFin"]=> string(10) "2025-10-24" ["programadosPrevios"]=> string(1) "0" ["idSolicitud"]=> string(0) "" ["tblConsolidado"]=> string(75) "{"trunco":13.67,"ganado":22,"vencido":43,"programado":0,"por_programar":65}" ["modalidad"]=> string(1) "1" }
+

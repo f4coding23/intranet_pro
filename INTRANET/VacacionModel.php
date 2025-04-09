@@ -996,7 +996,12 @@ class VacacionModel extends ModelBase
         $this->intra_trans->iniciarTransaccion();
 
         $this->idVacacion = $reg['idSolicitud'];
-        $this->_modificarSolicitudVacacion($reg, $reg['modalidad']);
+        $validator = $this->_modificarSolicitudVacacion($reg, $reg['modalidad']);
+        if(!$validator['status']){
+            $resultado['status'] = false;
+            $resultado['mensaje'] = $validator['mensaje'];
+            return $resultado;
+        }
         //$this->_eliminarDistribucionActual($this->idVacacion);
         //$this->_insertarDistribucion($this->idVacacion,$distribucion['resultado']);
         $this->_eliminarAutorizaciones($this->idVacacion);
@@ -1100,7 +1105,9 @@ class VacacionModel extends ModelBase
         }
 
         $totalDiasHabiles = $diasHabilesProgramados + $diasHabilesOfisis;
+        $totalDiasNoHabiles = $diasNoHabilesProgramados + $diasNoHabilesOfisis;
         $totalDiasHabilesConSolicitud = $totalDiasHabiles + $diasHabilesSolicitud;
+        $totalDiasNoHabilesConSolicitud = $totalDiasNoHabiles + $diasNoHabilesSolicitud;
         $totalDiasOfisisYProgramadas = $totalDiasOfisis + $diasHabilesProgramados + $diasNoHabilesProgramados;
         $totalDiasConSolicitud = $totalDiasOfisisYProgramadas + $totalDiasSolicitud;
 
@@ -1112,52 +1119,62 @@ class VacacionModel extends ModelBase
         // Días restantes antes de la solicitud
         $diasRestantesParaElUsuario = $TOTAL_DIAS_VACACIONES - $totalDiasOfisisYProgramadas;
         $diasHabilesRestantes = $TOTAL_DIAS_HABILES_REQUERIDOS - $totalDiasHabiles;
+        $diasNoHabilesRestantes = $TOTAL_DIAS_NO_HABILES_REQUERIDOS - $totalDiasNoHabiles;
 
+        $dias_a_exigir = max(2, $TOTAL_DIAS_NO_HABILES_REQUERIDOS - $diasNoHabilesRestantes);
+        
         // VALIDACIÓN 1: Verificar si la solicitud excede el total de días disponibles
         if ($totalDiasConSolicitud > $TOTAL_DIAS_VACACIONES) {
-            $resultado['es_valido'] = false;
+            $resultado['status'] = false;
             $resultado['mensaje'] = "La solicitud excede el límite permitido. Días disponibles: {$diasRestantesParaElUsuario}.";
             return $resultado;
         }
 
         // VALIDACIÓN 2: Verificar si la solicitud excede los días hábiles disponibles
         if ($totalDiasHabilesConSolicitud > $TOTAL_DIAS_HABILES_REQUERIDOS) {
-            $resultado['es_valido'] = false;
+            $resultado['status'] = false;
             $resultado['mensaje'] = "La solicitud excede los días hábiles permitidos. Días hábiles disponibles: {$diasHabilesRestantes}.";
             return $resultado;
         }
 
-        // PERTENECE AL SUBPERIODO 1 omar
+        // PERTENECE AL SUBPERIODO 1
         if($subPeriodo[0]->subperiodo == '1') {
+            
             // Validar si la solicitud excede los días hábiles disponibles
             $countSubPeriodo1 = $this->getExistSubPeriodo1($reg['cboSolicitante'], $periodo[0]->periodo, $reg['idSolicitud']);
             if ($countSubPeriodo1 == 0) {
+                
                 if($totalDiasSolicitud < 7){
-                    $resultado['es_valido'] = false;
+                    // var_dump('entre11');
+                    $resultado['status'] = false;
                     $resultado['mensaje'] = "La solicitud debe ser por un mínimo de 7 días.";
                     return $resultado;
                 }
             }else if($countSubPeriodo1 == 7){
                 if($totalDiasSolicitud <= 7){
-                    $resultado['es_valido'] = false;
+                    $resultado['status'] = false;
                     $resultado['mensaje'] = "La solicitud debe ser por un mínimo de 8 días.";
                     return $resultado;
                 }
             }else {
                 if($totalDiasSolicitud < 7){
-                    $resultado['es_valido'] = false;
+                    $resultado['status'] = false;
                     $resultado['mensaje'] = "La solicitud debe ser por un mínimo de 7 días.";
                     return $resultado;
                 }
             }
         }else if($subPeriodo[0]->subperiodo == '2') {
-            if ($totalDiasHabilesConSolicitud > $TOTAL_DIAS_HABILES_REQUERIDOS) {
-                $resultado['es_valido'] = false;
-                $resultado['mensaje'] = "La solicitud excede los días hábiles permitidos. Días hábiles disponibles: {$diasHabilesRestantes}.";
-                return $resultado;
+            if ($TOTAL_DIAS_NO_HABILES_REQUERIDOS > $totalDiasNoHabiles) {
+                if($totalDiasNoHabilesConSolicitud < $TOTAL_DIAS_NO_HABILES_REQUERIDOS){
+                    if($this->verificarFinesDeSemanaEnRango($reg['txtFechaInicio'], $reg['txtFechaFin']) < $dias_a_exigir) {
+                        $resultado['status'] = false;
+                        $resultado['mensaje'] = "Se requieren al menos {$dias_a_exigir} días no hábiles, pero solo se encontraron {$this->verificarFinesDeSemanaEnRango($reg['txtFechaInicio'], $reg['txtFechaFin'])} entre {$reg['txtFechaInicio']} y {$reg['txtFechaFin']}.";
+                        return $resultado;
+                    }
+                }
             }
         } else {
-            $resultado['es_valido'] = false;
+            $resultado['status'] = false;
             $resultado['mensaje'] = "No se puede editar la solicitud, comuniquese con RRHH.";
             return $resultado;
         }
@@ -1178,7 +1195,19 @@ class VacacionModel extends ModelBase
         [fecha_modi] = GETDATE()
         WHERE  id_vacacion = " . $reg['idSolicitud'] . ";";
 
-        return $this->intra_trans->DoUpdate($sqlQuery);
+        $updateResult = $this->intra_trans->DoUpdate($sqlQuery);
+
+        // Crear una estructura de retorno consistente
+        $resultado = array();
+        if ($updateResult) {
+            $resultado['status'] = true;
+            $resultado['mensaje'] = "Solicitud actualizada correctamente.";
+        } else {
+            $resultado['status'] = false;
+            $resultado['mensaje'] = "Error al actualizar la solicitud.";
+        }
+    
+    return $resultado;
     }
     private function _eliminarDistribucionActual($idSolicitud)
     {
@@ -2533,5 +2562,48 @@ class VacacionModel extends ModelBase
         }
         
         return 0;
+    }
+
+    /**
+     * Verifica si un rango de fechas contiene fines de semana (sábado o domingo).
+     *
+     * @param string|DateTime $fechaInicio La fecha de inicio del rango
+     * @param string|DateTime $fechaFin La fecha de fin del rango
+     * @param string $formatoFecha El formato de fecha si se proporcionan como cadenas
+     * @return int 0 si no hay fines de semana, 1 si solo sábados o solo domingos, 2 si ambos
+     */
+    function verificarFinesDeSemanaEnRango($fechaInicio, $fechaFin, $formatoFecha = 'Y-m-d')
+    {
+        // Convertir a objetos DateTime si son cadenas
+        if (!($fechaInicio instanceof DateTime)) {
+            $fechaInicio = DateTime::createFromFormat($formatoFecha, $fechaInicio);
+        }
+        if (!($fechaFin instanceof DateTime)) {
+            $fechaFin = DateTime::createFromFormat($formatoFecha, $fechaFin);
+        }
+        
+        // Validar fechas
+        if (!$fechaInicio || !$fechaFin || $fechaFin < $fechaInicio) {
+            throw new InvalidArgumentException('Fechas no válidas');
+        }
+        
+        $haySabado = false;
+        $hayDomingo = false;
+        $fechaActual = clone $fechaInicio;
+        
+        // Recorrer el rango de fechas
+        while ($fechaActual <= $fechaFin) {
+            $dia = (int)$fechaActual->format('w'); // 0=domingo, 6=sábado
+            
+            if ($dia === 6) $haySabado = true;
+            elseif ($dia === 0) $hayDomingo = true;
+            
+            // Salir temprano si ya encontramos ambos
+            if ($haySabado && $hayDomingo) return 2;
+            
+            $fechaActual->modify('+1 day');
+        }
+        
+        return ($haySabado && $hayDomingo) ? 2 : (($haySabado || $hayDomingo) ? 1 : 0);
     }
 }
