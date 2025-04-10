@@ -498,75 +498,82 @@ class VacacionController extends ControllerBase
 
     //     return $response;
     // }
+
     public function crear()
     {
         $funcion = (isset($_POST['master']) && $_POST['master']) ? '/indexVacacionesMaster' : '';
         $this->sessionObj->checkJsonRequest($this->getAppName() . $funcion, __FUNCTION__);
-        $config = Config::singleton();
 
+        $config = Config::singleton();
         require_once $config->get('classesFolder') . 'gump.class.php';
         require_once $this->getDefaultModelName();
+        require_once $config->get('classesFolder') . 'Input.php';
+
         $gump = new GUMP();
         $vacacionModelObj = new VacacionModel();
+        $input = new CI_Input();
+        $postData = $input->post(NULL);
+        $response = ['Result' => 'ERROR', 'Message' => ''];
 
-        $gump->validation_rules(array(
+        $gump->validation_rules([
             'cboSolicitante' => 'required',
             'cboCondicion' => 'required',
             'txtFechaInicio' => 'required',
             'txtFechaFin' => 'required',
             'txtCantidadDias' => 'required'
-        ));
+        ]);
 
-        $status = $gump->run($_POST);
-        $response = array('Result' => 'ERROR', 'Message' => '');
-
-        if ($status) {
-            require $config->get('classesFolder') . 'Input.php';
-            $input = new CI_Input();
-
-            $statusCantidadDias = $this->_validarCantidadDias($input->post(NULL));
-
-            // Validar que no se seleccione vacaciones truncas si tiene vacaciones vencidas o ganadas
-            // y que no se mezclen periodos en una misma solicitud
-            $postData = $input->post(NULL);
-            $validarCondicionTruncas = $this->_validarCondicionTruncas($postData['cboSolicitante'], $postData['cboCondicion'], $postData);
-            if (!$validarCondicionTruncas['status']) {
-                $response["Message"] = $validarCondicionTruncas['mensaje'];
-                $this->view->showJSONPlane(array('response' => $response));
-                return;
-            }
-
-            if ($statusCantidadDias['status']) {
-                $statusRangoFecha = $this->_validarFechas($input->post('txtFechaInicio'), $input->post('txtFechaFin'), $input->post('master'));
-                if ($statusRangoFecha['Result'] === 'OK') {
-                    // $idVacacionEspecial = isset($statusRangoFecha['idFechaEspecial']) ? $statusRangoFecha['idFechaEspecial'] : null;
-                    $vacaCruzadas = $vacacionModelObj->getVacacionesFromDate($input->post('cboSolicitante'), $input->post('txtFechaInicio'), $input->post('txtFechaFin'));
-                    if (empty($vacaCruzadas)) {
-                        $estadoRegistro = $vacacionModelObj->createVacacion($input->post(NULL));
-                        if ($estadoRegistro['status']) {
-                            $this->sessionObj->RegisterAccion($this->getAppName() . $funcion, __FUNCTION__, $estadoRegistro['id']);
-                            $response['Result'] = 'OK';
-                            $response['Message'] = $estadoRegistro['mensaje'];
-                        } else {
-                            $response["Message"] = $estadoRegistro['mensaje'];
-                        }
-                    } else {
-                        $response["Message"] = 'Existen vacaciones cruzadas en las fechas indicadas';
-                    }
-                } else {
-                    $response["Message"] = $statusRangoFecha['Message'];
-                }
-            } else {
-                $response["Message"] = $statusCantidadDias['mensaje'];
-            }
-        } else {
+        if (!$gump->run($_POST)) {
             $response["Message"] = $gump->get_readable_errors(true);
+            $this->view->showJSONPlane(['response' => $response]);
+            return;
+        }
+        
+        // Validar cantidad de días
+        $statusCantidadDias = $this->_validarCantidadDias($input->post(NULL));
+        if (!$statusCantidadDias['status']) {
+            $response["Message"] = $statusCantidadDias['mensaje'];
+            $this->view->showJSONPlane(['response' => $response]);
+            return;
+        }
+            
+
+        // Validar que no se seleccione vacaciones truncas si tiene vacaciones vencidas o ganadas
+        // y que no se mezclen periodos en una misma solicitud
+        
+        $validarCondicionTruncas = $this->_validarCondicionTruncas($postData['cboSolicitante'], $postData['cboCondicion'], $postData);
+        if (!$validarCondicionTruncas['status']) {
+            $response["Message"] = $validarCondicionTruncas['mensaje'];
+            $this->view->showJSONPlane(array('response' => $response));
+            return;
         }
 
-        $this->view->showJSONPlane(array(
+
+        $statusRangoFecha = $this->_validarFechas($input->post('txtFechaInicio'), $input->post('txtFechaFin'), $input->post('master'));
+        if ($statusRangoFecha['Result'] === 'OK') {
+            // $idVacacionEspecial = isset($statusRangoFecha['idFechaEspecial']) ? $statusRangoFecha['idFechaEspecial'] : null;
+            $vacaCruzadas = $vacacionModelObj->getVacacionesFromDate($input->post('cboSolicitante'), $input->post('txtFechaInicio'), $input->post('txtFechaFin'));
+            if (empty($vacaCruzadas)) {
+                $estadoRegistro = $vacacionModelObj->createVacacion($input->post(NULL));
+                if ($estadoRegistro['status']) {
+                    $this->sessionObj->RegisterAccion($this->getAppName() . $funcion, __FUNCTION__, $estadoRegistro['id']);
+                    $response['Result'] = 'OK';
+                    $response['Message'] = $estadoRegistro['mensaje'];
+                } else {
+                    $response["Message"] = $estadoRegistro['mensaje'];
+                }
+            } else {
+                $response["Message"] = 'Existen vacaciones cruzadas en las fechas indicadas';
+            }
+        } else {
+            $response["Message"] = $statusRangoFecha['Message'];
+        }
+
+        $this->view->showJSONPlane([
             'response' => $response
-        ));
+        ]);
     }
+
     private function _validarCantidadDias($reg)
     {
         require_once $this->getModelByName('Reporte', 'reporte');
@@ -588,7 +595,11 @@ class VacacionController extends ControllerBase
 
         //$aCuentaVaca = $this->_formatVacionesOfisis($vacacion,$regProgramadosAcuenta,2);
 
-        $response = array('status' => false, 'mensaje' => '');
+        $response = ['status' => false, 'mensaje' => ''];
+
+        // VALIDAR MÍNIMO Y MÁXIMO DE VACACIONES
+
+        // VALIDAR DÍAS HABILES Y NO HABILES MAXIMOS
 
         //Validar que acabe sus vacaciones ganadas
         if ($reg['cboCondicion'] == 2 && $usoVaca['por_programar'] > 0) {
@@ -596,18 +607,7 @@ class VacacionController extends ControllerBase
             return $response;
         }
 
-        //Se validara solo 22 dias habiles
-        /*$porProgramar = ($reg['cboCondicion']=='1')?$usoVaca['por_programar']:$aCuentaVaca['por_programar'];
-        $dateInicio = new DateTime($reg['txtFechaInicio']);
-        $dateFin = new DateTime($reg['txtFechaFin']);
-        $interval = $dateInicio->diff($dateFin);
-        $numDias = (int)$interval->format('%d')+1;
-
-        if($porProgramar >= $numDias){*/
         $response['status'] = true;
-        /*}else{
-            $response['mensaje'] = 'La cantidad de dias de vacaciones no debe ser mayor a '.$porProgramar;
-        }*/
 
         return $response;
     }

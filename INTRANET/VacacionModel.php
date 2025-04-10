@@ -1606,33 +1606,37 @@ class VacacionModel extends ModelBase
 
         return $cadena;
     }
+
+    /**
+    * Devuelve la lista de condiciones para el combo especial según el estado del solicitante.
+    * 
+    * @param string $id_solicitante ID del solicitante a verificar
+    * @return array Lista de condiciones disponibles para el solicitante
+    */
     public function listarCondicionComboEspecial($id_solicitante)
     {
         $this->intra_db->usarUTF8();
-
-        $query = "SELECT CASE WHEN EXISTS (
+        
+        $sql = "DECLARE @tiene_registros BIT;
+                
+                SELECT @tiene_registros = CASE WHEN EXISTS (
                     SELECT 1 FROM TBINT_VACACIONES_TEMP 
                     WHERE id_solicitante = '$id_solicitante' AND eliminado <> 1
-                  ) THEN 1 ELSE 0 END AS tiene_registros";
-
-        $resultado = $this->intra_db->Consulta($query);
-        $tiene_registros = (is_object($resultado[0])) ?
-            $resultado[0]->tiene_registros :
-            $resultado[0]['tiene_registros'];
-
-        if ($tiene_registros) {
-            $sql = "SELECT id_vaca_condicion, vaca_condicion 
+                ) THEN 1 ELSE 0 END;
+                
+                IF @tiene_registros = 1
+                    SELECT id_vaca_condicion, vaca_condicion 
                     FROM TBINT_VACA_CONDICION 
-                    WHERE activo = 1";
-        } else {
-            $sql = "SELECT TOP 2 id_vaca_condicion, vaca_condicion 
+                    WHERE activo = 1
+                ELSE
+                    SELECT TOP 2 id_vaca_condicion, vaca_condicion 
                     FROM TBINT_VACA_CONDICION 
                     WHERE activo = 1 
                     ORDER BY id_vaca_condicion ASC";
-        }
-
+        
         return $this->intra_db->Consulta($sql);
     }
+
     public function getFechaEspecial($fechaInicio, $fechaFin, $idSolicitante)
     {
         $this->intra_db->usarUTF8();
