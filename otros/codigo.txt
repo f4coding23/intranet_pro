@@ -1,0 +1,91 @@
+Usando Chart.js:
+
+const labels = [1, 2, 3, 4, 5];
+const data = [99.66, 100.53, 99.88, 100.61, 99.88];
+const promedio = data.reduce((a, b) => a + b) / data.length;
+const stdDev = Math.sqrt(data.map(x => Math.pow(x - promedio, 2)).reduce((a, b) => a + b) / data.length);
+
+new Chart(document.getElementById("myChart"), {
+    type: 'line',
+    data: {
+        labels: labels,
+        datasets: [
+            {
+                label: 'Resultado',
+                data: data,
+                borderColor: 'black',
+                fill: false
+            },
+            {
+                label: 'Promedio',
+                data: labels.map(() => promedio),
+                borderColor: 'green',
+                borderDash: [5, 5],
+                fill: false
+            },
+            {
+                label: 'Prom + σ',
+                data: labels.map(() => promedio + stdDev),
+                borderColor: 'red',
+                borderDash: [5, 5],
+                fill: false
+            },
+            {
+                label: 'Prom - σ',
+                data: labels.map(() => promedio - stdDev),
+                borderColor: 'blue',
+                borderDash: [5, 5],
+                fill: false
+            }
+        ]
+    }
+});
+
+Referencia con Python:
+
+1.	Crear script grafica_resultados.py:
+
+# grafica_resultados.py
+import sys
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Leer argumentos desde línea de comandos
+data = [tuple(map(float, line.split(','))) for line in sys.stdin]
+df = pd.DataFrame(data, columns=["Numero", "Resultado"])
+
+# Calcular estadísticas
+media = df["Resultado"].mean()
+std_dev = df["Resultado"].std()
+
+# Crear gráfico
+plt.figure(figsize=(10, 6))
+plt.plot(df["Numero"], df["Resultado"], marker='o', label="Resultado")
+plt.axhline(media, color='green', linestyle='--', label=f"Promedio ({media:.2f})")
+plt.axhline(media + std_dev, color='red', linestyle='--', label=f"Prom + σ ({media + std_dev:.2f})")
+plt.axhline(media - std_dev, color='blue', linestyle='--', label=f"Prom - σ ({media - std_dev:.2f})")
+plt.title("Gráfico con Desviación Estándar")
+plt.xlabel("Número")
+plt.ylabel("Resultado")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+
+# Guardar imagen
+plt.savefig("grafica_resultados.png")
+
+En laravel, pasar los datos (en este caso ejemplo) al script anterior:
+
+$data = [
+    [1, 99.66],
+    [2, 100.53],
+    [3, 99.88],
+    // ...
+];
+
+$input = collect($data)->map(function($item) {
+    return implode(',', $item);
+})->implode("\n");
+
+file_put_contents('input.txt', $input);
+exec('cat input.txt | python3 grafica_resultados.py');
