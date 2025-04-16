@@ -1,0 +1,206 @@
+USE [DBACPORTALINT_TEST]
+GO
+/****** Object:  StoredProcedure [CCA].[usp_inspeccion_material_consultar_inicial]    Script Date: 16/04/2025 18:11:00 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER   PROCEDURE [CCA].[usp_inspeccion_material_consultar_inicial]
+    @tipo INT,
+    @producto VARCHAR(50),
+    @fechadesde VARCHAR(10),
+    @fechafin VARCHAR(10),
+    @pagina INT,
+    @filas INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    -- Convertir fechas si no están vacías
+    DECLARE @fecha_inicio DATE = CASE WHEN @fechadesde = '' THEN NULL ELSE CONVERT(DATE, @fechadesde) END;
+    DECLARE @fecha_fin DATE = CASE WHEN @fechafin = '' THEN NULL ELSE CONVERT(DATE, @fechafin) END;
+    
+    -- Calcular paginación
+    DECLARE @inicio INT = (@pagina - 1) * @filas;
+    
+    -- Crear tabla temporal para los productos filtrados
+    IF OBJECT_ID('tempdb..#ProductosFiltrados') IS NOT NULL
+        DROP TABLE #ProductosFiltrados;
+    
+    SELECT DISTINCT
+        p.cod_producto_mae,
+        p.nom_producto_mae,
+        p.cod_producto  -- Esta es la clave para la relación
+    INTO #ProductosFiltrados
+    FROM 
+        CCA.mae_productos p
+    WHERE 
+        (@producto = '' OR p.cod_producto_mae LIKE '%' + @producto + '%' OR p.nom_producto_mae LIKE '%' + @producto + '%');
+    
+    -- Crear tabla temporal para inspecciones filtradas por fecha
+    IF OBJECT_ID('tempdb..#InspeccionesFiltradas') IS NOT NULL
+        DROP TABLE #InspeccionesFiltradas;
+    
+    SELECT 
+        i.*
+    INTO #InspeccionesFiltradas
+    FROM 
+        CCA.mae_inspecciones i
+    WHERE
+        (@fecha_inicio IS NULL OR i.fec_ini_insp >= @fecha_inicio)
+        AND (@fecha_fin IS NULL OR i.fec_ini_insp <= @fecha_fin);
+    
+    -- Crear tabla para resultados finales
+    IF OBJECT_ID('tempdb..#ResultadoFinal') IS NOT NULL
+        DROP TABLE #ResultadoFinal;
+    
+    CREATE TABLE #ResultadoFinal (
+        cod_producto_mae VARCHAR(50),
+        nom_producto_mae VARCHAR(255),
+        total_lotes INT,
+        lotes_aprobados INT,
+        lotes_desaprobados INT
+    );
+    
+    -- Insertar resultados con la relación correcta
+    INSERT INTO #ResultadoFinal
+    SELECT 
+        pf.cod_producto_mae,
+        pf.nom_producto_mae,
+        COUNT(DISTINCT CASE WHEN i.num_lote IS NOT NULL THEN i.num_lote END) AS total_lotes,
+        COUNT(DISTINCT CASE WHEN i.valoracion = 'A' THEN i.num_lote END) AS lotes_aprobados,
+        COUNT(DISTINCT CASE WHEN i.valoracion = 'R' THEN i.num_lote END) AS lotes_desaprobados
+    FROM 
+        #ProductosFiltrados pf
+    LEFT JOIN 
+        #InspeccionesFiltradas i ON pf.cod_producto = i.cod_producto
+    GROUP BY 
+        pf.cod_producto_mae, pf.nom_producto_mae;
+    
+    -- Obtener total para paginación
+    DECLARE @total_registros INT;
+    SELECT @total_registros = COUNT(*) FROM #ResultadoFinal;
+    
+    -- Devolver resultados paginados
+    SELECT 
+        cod_producto_mae,
+        nom_producto_mae,
+        total_lotes,
+        lotes_aprobados,
+        lotes_desaprobados,
+        @total_registros AS total
+    FROM 
+        #ResultadoFinal
+    ORDER BY 
+        nom_producto_mae
+    OFFSET @inicio ROWS
+    FETCH NEXT @filas ROWS ONLY;
+    
+    -- Limpiar tablas temporales
+    DROP TABLE #ProductosFiltrados;
+    DROP TABLE #InspeccionesFiltradas;
+    DROP TABLE #ResultadoFinal;
+END;
+
+
+
+----------------------------------------------------------------------------------------------------------------
+USE [DBACPORTALINT_TEST]
+GO
+/****** Object:  StoredProcedure [CCA].[usp_inspeccion_material_consultar_detalles]    Script Date: 16/04/2025 18:11:31 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER   PROCEDURE [CCA].[usp_inspeccion_material_consultar_detalles]
+    @tipo INT,
+    @cod_producto_mae VARCHAR(50),
+    @fechadesde VARCHAR(10),
+    @fechafin VARCHAR(10),
+    @pagina INT,
+    @filas INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    
+    -- Convertir fechas si no están vacías
+    DECLARE @fecha_inicio DATE = CASE WHEN @fechadesde = '' THEN NULL ELSE CONVERT(DATE, @fechadesde) END;
+    DECLARE @fecha_fin DATE = CASE WHEN @fechafin = '' THEN NULL ELSE CONVERT(DATE, @fechafin) END;
+    
+    -- Calcular paginación
+    DECLARE @inicio INT = (@pagina - 1) * @filas;
+    
+    -- Query principal para obtener todos los tipos de inspección para este producto
+    WITH InspeccionesPorProducto AS (
+        SELECT DISTINCT
+            i.cod_insp,
+            ti.cod_insp_mae,
+            ti.nom_insp_mae
+        FROM 
+            CCA.mae_inspecciones i
+        INNER JOIN 
+            CCA.mae_productos p ON i.cod_producto = p.cod_producto
+        INNER JOIN 
+            CCA.mae_tipo_inspecciones ti ON i.cod_insp = ti.cod_insp
+        WHERE 
+            p.cod_producto_mae = @cod_producto_mae
+            AND (@fecha_inicio IS NULL OR i.fec_ini_insp >= @fecha_inicio)
+            AND (@fecha_fin IS NULL OR i.fec_ini_insp <= @fecha_fin)
+    ),
+    TodosLosRegistros AS (
+        SELECT
+            ipp.cod_insp_mae,
+            ipp.nom_insp_mae,
+            (
+                SELECT COUNT(DISTINCT i.num_lote)
+                FROM CCA.mae_inspecciones i
+                INNER JOIN CCA.mae_productos p ON i.cod_producto = p.cod_producto
+                INNER JOIN CCA.mae_tipo_inspecciones ti ON i.cod_insp = ti.cod_insp
+                WHERE 
+                    p.cod_producto_mae = @cod_producto_mae
+                    AND ti.cod_insp_mae = ipp.cod_insp_mae
+                    AND (@fecha_inicio IS NULL OR i.fec_ini_insp >= @fecha_inicio)
+                    AND (@fecha_fin IS NULL OR i.fec_ini_insp <= @fecha_fin)
+            ) AS total_lotes,
+            (
+                SELECT COUNT(DISTINCT i.num_lote)
+                FROM CCA.mae_inspecciones i
+                INNER JOIN CCA.mae_productos p ON i.cod_producto = p.cod_producto
+                INNER JOIN CCA.mae_tipo_inspecciones ti ON i.cod_insp = ti.cod_insp
+                WHERE 
+                    p.cod_producto_mae = @cod_producto_mae
+                    AND ti.cod_insp_mae = ipp.cod_insp_mae
+                    AND i.valoracion = 'A'
+                    AND (@fecha_inicio IS NULL OR i.fec_ini_insp >= @fecha_inicio)
+                    AND (@fecha_fin IS NULL OR i.fec_ini_insp <= @fecha_fin)
+            ) AS lotes_aprobados,
+            (
+                SELECT COUNT(DISTINCT i.num_lote)
+                FROM CCA.mae_inspecciones i
+                INNER JOIN CCA.mae_productos p ON i.cod_producto = p.cod_producto
+                INNER JOIN CCA.mae_tipo_inspecciones ti ON i.cod_insp = ti.cod_insp
+                WHERE 
+                    p.cod_producto_mae = @cod_producto_mae
+                    AND ti.cod_insp_mae = ipp.cod_insp_mae
+                    AND i.valoracion = 'R'
+                    AND (@fecha_inicio IS NULL OR i.fec_ini_insp >= @fecha_inicio)
+                    AND (@fecha_fin IS NULL OR i.fec_ini_insp <= @fecha_fin)
+            ) AS lotes_desaprobados,
+            ROW_NUMBER() OVER(ORDER BY ipp.nom_insp_mae) AS RowNum
+        FROM
+            InspeccionesPorProducto ipp
+    )
+    SELECT
+        cod_insp_mae,
+        nom_insp_mae,
+        total_lotes,
+        lotes_aprobados,
+        lotes_desaprobados,
+        (SELECT COUNT(1) FROM TodosLosRegistros) AS total
+    FROM
+        TodosLosRegistros
+    WHERE
+        RowNum > @inicio AND RowNum <= (@inicio + @filas)
+    ORDER BY
+        nom_insp_mae;
+END;
