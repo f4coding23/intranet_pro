@@ -1,0 +1,51 @@
+CREATE TABLE CCA.mae_productos (
+    id_producto_mae INT IDENTITY PRIMARY KEY,
+    cod_producto_mae VARCHAR(50),
+    nom_producto_mae VARCHAR(255),
+    cod_producto VARCHAR(50),
+    nom_producto VARCHAR(255)
+);
+
+CREATE TABLE CCA.mae_tipo_inspecciones (
+    id_tipo_inspeccion_mae INT IDENTITY PRIMARY KEY,
+    cod_insp_mae VARCHAR(50),
+    nom_insp_mae VARCHAR(255),
+    cod_insp VARCHAR(50),
+    nom_insp VARCHAR(255)
+);
+
+CREATE TABLE CCA.mae_inspecciones (
+    id_inspeccion BIGINT IDENTITY PRIMARY KEY,
+    cod_producto BIGINT,
+    cod_insp VARCHAR(50),
+    num_lote VARCHAR(50),
+    num_lote_orig VARCHAR(50),
+    fec_ven_lote DATE,
+    lote_inspeccion BIGINT,
+    valoracion VARCHAR(10),
+    resultado DECIMAL(10, 2),
+    media float,
+    texto_breve VARCHAR(255),
+    fec_ini_insp DATE,
+    fec_fin_insp DATE,
+    -- Opcional: Definir claves foráneas para relacionar con otras tablas
+    --FOREIGN KEY (id_producto_mae) REFERENCES CCA.mae_productos(id_producto_mae),
+    --FOREIGN KEY (id_tipo_inspeccion_mae) REFERENCES CCA.mae_tipo_inspecciones(id_tipo_inspeccion_mae) -- Referencia a la primera tabla mae_inspecciones
+);
+
+INSERT INTO CCA.mae_productos VALUES
+('3000000001', 'VALPROBATO 500 mg/5mL', '4000001111', 'VALPRAX 500 mg/5mL SOL. INY. Cx 10'),
+('3000000001', 'VALPROBATO 500 mg/5mL', '4000003695', 'VALPRAX 500 mg/5mL SOL. INY. Cx 10'),
+('3000000001', 'VALPROBATO 500 mg/5mL', '4000003728', 'VALPRAX 500 mg/5mL SOL. INY. Cx 10'),
+('3000000001', 'VALPROBATO 500 mg/5mL', '4000003815', 'VALPRAX 500 mg/5mL SOL. INY. Cx 10');
+
+SELECT * FROM CCA.mae_productos;
+SELECT DISTINCT cod_producto_mae, nom_producto_mae
+FROM CCA.mae_productos;
+
+
+
+INSERT INTO CCA.mae_tipo_inspecciones VALUES
+('00001', 'PH', 'PT996', 'pH 7,0 - 8,5'),
+('00001', 'VOLUMEN', 'PT965', 'VOLUMEN EXTRAIBLE>= 5,0 mL'),
+('00001', 'VOLUMEN', 'PT965', 'VOLUMEN EXTRAIBLE>= 5,0 mL');

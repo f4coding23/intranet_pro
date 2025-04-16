@@ -2,12 +2,6 @@
 <link href="{{ asset('public/css/app.css') }}" rel="stylesheet">
 
 <style>
-
-
-
-
-
-
     /* Estilos para el botón expandir */
     .btn-expandir {
         display: inline-block;
@@ -42,6 +36,39 @@
 
     .datagrid-row-detail-content {
         padding: 10px;
+    }
+    
+    /* Estilos para modal */
+    .modal-header {
+        background-color: #f5f5f5;
+        padding: 10px;
+        border-bottom: 1px solid #ddd;
+    }
+    
+    .modal-body {
+        padding: 15px;
+    }
+    
+    .modal-footer {
+        background-color: #f5f5f5;
+        padding: 10px;
+        border-top: 1px solid #ddd;
+    }
+    
+    /* Tabla detalle datos */
+    .table-detalle {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .table-detalle th, .table-detalle td {
+        padding: 8px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+    
+    .table-detalle th {
+        background-color: #f5f5f5;
     }
 </style>
 
@@ -85,7 +112,14 @@
             label: 'Producto',
             prompt: 'Buscar producto',
             panelHeight: 'auto',
-            panelMaxHeight: 200
+            panelMaxHeight: 200,
+            data: @json($productos),
+            valueField: 'value',
+            textField: 'text',
+            filter: function(q, row) {
+                return row.text.toLowerCase().indexOf(q.toLowerCase()) >= 0 || 
+                       row.value.toLowerCase().indexOf(q.toLowerCase()) >= 0;
+            }
         });
 
         $('#dt_fecha_desde').datebox({
@@ -118,7 +152,7 @@
             url: url_consulta,
             fitColumns: false,
             singleSelect: true,
-            rownumbers: true,  // Desactivamos la numeración automática
+            rownumbers: true,
             pagination: true,
             pageSize: 50,
             striped: true,
@@ -132,160 +166,425 @@
             },
             toolbar: '#tb_dg_001',
             columns: [[
-                // Eliminamos la columna personalizada con el botón expandir
-                { field: 'lote_inspeccion', title: 'Lote Inspección', align: 'center', halign: 'center', width: 200 },
-                { field: 'cod_material', title: 'Código Material', align: 'center', halign: 'center', width: 200 },
-                { field: 'nom_material', title: 'Nombre Material', align: 'left', halign: 'center', width: 450 },
-                { field: 'num_lote', title: 'Número Lote', align: 'center', halign: 'center', width: 200 }
+                { field: 'cod_producto_mae', title: 'Código Producto', align: 'center', halign: 'center', width: 150 },
+                { field: 'nom_producto_mae', title: 'Nombre Producto', align: 'left', halign: 'center', width: 400 },
+                { field: 'total_lotes', title: 'Cantidad Lotes', align: 'center', halign: 'center', width: 120 },
+                { field: 'lotes_aprobados', title: 'Lotes Aprobados', align: 'center', halign: 'center', width: 120 },
+                { field: 'lotes_desaprobados', title: 'Lotes Desaprobados', align: 'center', halign: 'center', width: 120 }
             ]],
             view: detailview,
             detailFormatter: function(index, row) {
-                return '<div style="padding:10px;"><table id="detalle-grid-' + row.lote_inspeccion + '"></table></div>';
+                return '<div style="padding:10px;"><table id="detalle-grid-' + row.cod_producto_mae + '"></table></div>';
             },
             onExpandRow: function(index, row) {
-                var lote = row.lote_inspeccion;
-                inicializarTablaDetalles(lote);
-                $('#dg_001').datagrid('fixDetailRowHeight', index);
+                inicializarTablaDetalles(row.cod_producto_mae, index);
             },
             onLoadSuccess: function(data) {
                 console.log("Datos cargados en tabla principal:", data);
-                if (data.rows.length > 0) {
-                    console.log("Primera fila:", data.rows[0]);
-                    console.log("Valor de lote_inspeccion:", data.rows[0].lote_inspeccion);
-                }
             },
             onLoadError: function (XMLHttpRequest, textStatus, errorThrown) {
-                $.messager.alert('Error', 'Error al mostrar los datos, vuelva a intentar', 'error');
+                $.messager.alert('Error', 'Error al mostrar los datos: ' + errorThrown, 'error');
             }
         }).datagrid('getPager').pagination({
             beforePageText: 'Pag. ',
             afterPageText: 'de {pages}',
             displayMsg: 'Del {from} al {to}, de {total} items.'
         });
-
-
     });
-
-    // Función para expandir o contraer una fila
-    function expandirFila(index, lote_inspeccion) {
-        var $dg = $('#dg_001');
-        var $btn = $('.btn-expandir').eq(index);
-        var isExpanded = $btn.data('expanded');
-        
-        if (isExpanded) {
-            // Contraer fila
-            $dg.datagrid('collapseRow', index);
-            $btn.html('<i class="bi bi-plus-circle"></i>');
-            $btn.data('expanded', false);
-        } else {
-            // Expandir fila
-            $dg.datagrid('expandRow', index);
-            $btn.html('<i class="bi bi-dash-circle"></i>');
-            $btn.data('expanded', true);
-        }
-    }
 
     // Función para inicializar la tabla de detalles
-    function inicializarTablaDetalles(lote_inspeccion) {
-    var $detalleGrid = $('#detalle-grid-' + lote_inspeccion);
     
-    console.log("Inicializando tabla de detalles para lote: " + lote_inspeccion);
-    
-    if ($detalleGrid.data('initialized')) {
-        console.log("Tabla ya inicializada, retornando");
-        return;
+    // Función para mostrar modal de detalles de lotes
+    // Función para mostrar modal de detalles de lotes
+    // Función para mostrar modal de detalles de lotes
+    function mostrarDetallesLotes(tipoLote, codProductoMae, codInspeccion) {
+    // Primero, eliminar cualquier modal existente
+    if ($('#modal-detalles-lotes').length) {
+        $('#modal-detalles-lotes').remove();
     }
     
-    $detalleGrid.datagrid({
+    // Obtener el nombre del producto y el nombre de la inspección mediante AJAX
+    $.ajax({
         url: url_consulta,
-        fitColumns: false,
-        singleSelect: true,
-        rownumbers: false,
-        pagination: true,
-        pageSize: 10,
-        striped: true,
-        fit: true,
-        nowrap: false,
-        border: false,
-        loadMsg: 'Cargando detalles...',
-        queryParams: {
+        type: 'POST',
+        data: {
+            _token: '{{ csrf_token() }}',
+            _acc: 'obtenerInfoDetalle',
+            cod_producto_mae: codProductoMae,
+            cod_insp_mae: codInspeccion
+        },
+        success: function(response) {
+            // Crear estructura del modal con la información adicional
+            let modalHtml = `
+            <div id="modal-detalles-lotes" style="width:900px;height:500px;padding:10px;">
+                <div class="easyui-layout" data-options="fit:true">
+                    <div data-options="region:'center'" style="padding:10px;">
+                        <div class="info-header" style="background-color:#f5f5f5;padding:10px;margin-bottom:15px;border:1px solid #ddd;border-radius:4px;">
+                            <h3 style="margin-top:0;color:#333;">${tipoLote}</h3>
+                            <table class="table-detalle" style="width:100%;margin-bottom:15px;">
+                                <tr>
+                                    <th style="width:20%;">Código Producto:</th>
+                                    <td style="width:30%;">${codProductoMae}</td>
+                                    <th style="width:20%;">Nombre Producto:</th>
+                                    <td style="width:30%;">${response.nombreProducto || '-'}</td>
+                                </tr>
+                                <tr>
+                                    <th>Código Inspección:</th>
+                                    <td>${codInspeccion}</td>
+                                    <th>Nombre Inspección:</th>
+                                    <td>${response.nombreInspeccion || '-'}</td>
+                                </tr>
+                                <tr>
+                                    <th>Rango de Fechas:</th>
+                                    <td colspan="3">Desde ${$('#dt_fecha_desde').datebox('getValue') || '-'} hasta ${$('#dt_fecha_fin').datebox('getValue') || '-'}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        
+                        <table id="grid-detalles-lotes"></table>
+                    </div>
+                    <div data-options="region:'south',border:false" style="height:40px;text-align:center;padding:5px;">
+                        <a href="javascript:void(0)" class="easyui-linkbutton" onclick="cerrarModalLotes()">Cerrar</a>
+                    </div>
+                </div>
+            </div>`;
+            
+            // Agregar modal al cuerpo
+            $('body').append(modalHtml);
+
+            // Inicializar ventana
+            $('#modal-detalles-lotes').window({
+                title: `Detalles de ${tipoLote}`,
+                modal: true,
+                collapsible: false,
+                minimizable: false,
+                maximizable: true,
+                closable: true,
+                onClose: function() {
+                    $(this).window('destroy');
+                }
+            });
+
+            // Inicializar grid de detalles (el resto del código permanece igual)
+            $('#grid-detalles-lotes').datagrid({
+                columns:[[
+                    {field:'num_lote', title:'Número Lote', width:80, align:'center'},
+                    {field:'fec_ven_lote', title:'Vencimiento Lote', width:100, align:'center'},
+                    {field:'valoracion', title:'Valoración', width:70, align:'center', 
+                        formatter: function(value){
+                            if (value === 'A') return 'Aprobado';
+                            if (value === 'R') return 'Rechazado';
+                            return value;
+                        }
+                    },
+                    {field:'resultado', title:'Resultado', width:80, align:'center'},
+                    {field:'media', title:'Media', width:80, align:'center'},
+                    {field:'texto_breve', title:'Texto Breve', width:150, align:'left'},
+                    {field:'fec_ini_insp', title:'Inicio Insp.', width:100, align:'center'},
+                    {field:'fec_fin_insp', title:'Fin Insp.', width:100, align:'center'}
+                ]],
+                fitColumns: true,
+                singleSelect: true,
+                pagination: true,
+                pageSize: 10,
+                rownumbers: true,
+                loadMsg: 'Cargando datos...',
+                emptyMsg: 'No hay datos disponibles',
+                url: url_consulta,
+                method: 'post',
+                queryParams: {
+                    _token: '{{ csrf_token() }}',
+                    _acc: tipoLote === 'Lotes Aprobados' ? 'listarLotesAprobados' : 'listarLotesDesaprobados',
+                    cod_producto_mae: codProductoMae,
+                    cod_insp_mae: codInspeccion,
+                    fechadesde: $('#dt_fecha_desde').datebox('getValue'),
+                    fechafin: $('#dt_fecha_fin').datebox('getValue')
+                },
+                onLoadSuccess: function(data) {
+                    console.log("Datos cargados:", data);
+                    // Si no hay datos, mostrar mensaje
+                    if (data.rows.length === 0) {
+                        $(this).datagrid('appendRow', {
+                            num_lote: '<div style="text-align:center;color:#999;">No hay información disponible</div>'
+                        });
+                        $(this).datagrid('mergeCells', {
+                            index: 0,
+                            field: 'num_lote',
+                            colspan: 8
+                        });
+                    }
+                },
+                onLoadError: function(xhr, status, error) {
+                    console.error("Error al cargar datos:", xhr, status, error);
+                    
+                    // Intentar parsear el error del servidor
+                    try {
+                        var responseJson = xhr.responseJSON || JSON.parse(xhr.responseText);
+                        var errorMessage = responseJson.message || 'Error al cargar los datos';
+                        
+                        $(this).datagrid('loadData', {total: 0, rows: []});
+                        $(this).datagrid('appendRow', {
+                            num_lote: '<div style="text-align:center;color:red;">' + errorMessage + '</div>'
+                        });
+                        $(this).datagrid('mergeCells', {
+                            index: 0,
+                            field: 'num_lote',
+                            colspan: 8
+                        });
+                    } catch (e) {
+                        console.error("Error al procesar respuesta de error:", e);
+                        $(this).datagrid('loadData', {total: 0, rows: []});
+                        $(this).datagrid('appendRow', {
+                            num_lote: '<div style="text-align:center;color:red;">Error desconocido al cargar los datos</div>'
+                        });
+                        $(this).datagrid('mergeCells', {
+                            index: 0,
+                            field: 'num_lote',
+                            colspan: 8
+                        });
+                    }
+                }
+            });
+        },
+        error: function(xhr, status, error) {
+            console.error("Error al obtener información detallada:", error);
+            // Proceder con el modal pero sin la información adicional
+            mostrarModalSinInfoAdicional(tipoLote, codProductoMae, codInspeccion);
+        }
+    });
+}
+
+// Función para cerrar modal
+function cerrarModalLotes() {
+    $('#modal-detalles-lotes').window('close');
+}
+
+// Modificar la función de inicialización de tabla de detalles
+// Modificar la función de inicialización de tabla de detalles
+// Modificar la función de inicialización de tabla de detalles
+function inicializarTablaDetalles(cod_producto_mae, index) {
+    var $detalleGrid = $('#detalle-grid-' + cod_producto_mae);
+    
+    console.log("Inicializando tabla de detalles para producto: " + cod_producto_mae);
+    
+    // Petición AJAX para obtener los detalles
+    $.ajax({
+        url: url_consulta,
+        type: 'POST',
+        data: {
             _token: '{{ csrf_token() }}',
             _acc: 'listarDetalles',
-            lote_inspeccion: lote_inspeccion
+            cod_producto_mae: cod_producto_mae,
+            fechadesde: $('#dt_fecha_desde').datebox('getValue'),
+            fechafin: $('#dt_fecha_fin').datebox('getValue'),
+            page: 1,
+            rows: 10
         },
-        onLoadSuccess: function(data) {
-            console.log("Datos cargados exitosamente:", data);
-        },
-        onLoadError: function(xhr, status, error) {
-            console.error("Error cargando datos:", status, error);
-            $.messager.alert('Error', 'Error al cargar los detalles: ' + status, 'error');
-        },
-        columns: [[
-            { 
-                field: 'grafico', 
-                title: '', 
-                align: 'center', 
-                width: 40, 
-                formatter: function(val, row, index) {
-                    return '<a href="javascript:void(0)" onclick="mostrarGraficoEstadistico(\'' + row.cod_insp + '\')" class="btn-grafico"><i class="bi bi-bar-chart"></i></a>';
+        success: function(response) {
+            console.log("Respuesta AJAX completa:", JSON.stringify(response));
+            
+            // Verificar si hay datos
+            if (!response || !response.rows || response.rows.length === 0) {
+                $detalleGrid.html('<div style="padding:10px;text-align:center;">No hay datos disponibles</div>');
+                return;
+            }
+            
+            // Crear HTML de la tabla con estilos de EasyUI
+            var html = '<div class="datagrid-wrap panel-body panel-body-noheader">';
+            html += '<div class="datagrid-view">';
+            html += '<div class="datagrid-view1" style="width: 25px;">';
+            html += '<div class="datagrid-header" style="height: 26px; width: 25px;">';
+            html += '<div class="datagrid-header-inner">';
+            html += '<table class="datagrid-htable" border="0" cellspacing="0" cellpadding="0" style="width: 25px;">';
+            html += '<tbody><tr><td></td></tr></tbody>';
+            html += '</table>';
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
+            html += '<div class="datagrid-view2">';
+            html += '<div class="datagrid-header" style="height: 26px;">';
+            html += '<div class="datagrid-header-inner">';
+            html += '<table class="datagrid-htable" border="0" cellspacing="0" cellpadding="0">';
+            html += '<thead><tr>';
+            html += '<th><div class="datagrid-cell" style="width: 50px; text-align: center;">Gráfico</div></th>';
+            html += '<th><div class="datagrid-cell" style="width: 150px; text-align: center;">Código Inspección</div></th>';
+            html += '<th><div class="datagrid-cell" style="width: 300px; text-align: left;">Nombre Inspección</div></th>';
+            html += '<th><div class="datagrid-cell" style="width: 120px; text-align: center;">Cantidad Lotes</div></th>';
+            html += '<th><div class="datagrid-cell" style="width: 120px; text-align: center;">Lotes Aprobados</div></th>';
+            html += '<th><div class="datagrid-cell" style="width: 120px; text-align: center;">Lotes Desaprobados</div></th>';
+            html += '</tr></thead>';
+            html += '</table>';
+            html += '</div>';
+            html += '</div>';
+            html += '<div class="datagrid-body">';
+            html += '<table class="datagrid-btable" border="0" cellspacing="0" cellpadding="0">';
+            
+            // Agregar filas
+            response.rows.forEach(function(row, index) {
+                html += '<tr datagrid-row-index="' + index + '" class="datagrid-row ' + (index % 2 === 0 ? 'datagrid-row-alt' : '') + '">';
+                html += '<td class="datagrid-td-rownumber" style="width: 50px; text-align: center;">';
+                html += '<a href="javascript:void(0)" onclick="mostrarGraficoEstadistico(\'' + row.cod_insp_mae + '\', \'' + cod_producto_mae + '\')" class="btn-grafico">';
+                html += '<i class="bi bi-bar-chart" style="color: #9B59B6;"></i></a>';
+                html += '</td>';
+                html += '<td class="datagrid-cell" style="width: 150px; text-align: center;">' + (row.cod_insp_mae || '') + '</td>';
+                html += '<td class="datagrid-cell" style="width: 300px; text-align: left;">' + (row.nom_insp_mae || '') + '</td>';
+                html += '<td class="datagrid-cell" style="width: 120px; text-align: center;">' + (row.total_lotes || 0) + '</td>';
+                
+                // Lotes Aprobados
+                html += '<td class="datagrid-cell" style="width: 120px; text-align: center;">';
+                html += '<span style="cursor: pointer;" onclick="mostrarDetallesLotes(\'Lotes Aprobados\', \'' + cod_producto_mae + '\', \'' + row.cod_insp_mae + '\')">' + (row.lotes_aprobados || 0) + '</span>';
+                html += '<a href="javascript:void(0)" onclick="mostrarDetallesLotes(\'Lotes Aprobados\', \'' + cod_producto_mae + '\', \'' + row.cod_insp_mae + '\')" style="margin-left: 10px;">';
+                html += '<i class="bi bi-file-earmark-text" style="color: #21A6A4;"></i></a>';
+                html += '</td>';
+                
+                // Lotes Desaprobados
+                html += '<td class="datagrid-cell" style="width: 120px; text-align: center;">';
+                html += '<span style="cursor: pointer;" onclick="mostrarDetallesLotes(\'Lotes Desaprobados\', \'' + cod_producto_mae + '\', \'' + row.cod_insp_mae + '\')">' + (row.lotes_desaprobados || 0) + '</span>';
+                html += '<a href="javascript:void(0)" onclick="mostrarDetallesLotes(\'Lotes Desaprobados\', \'' + cod_producto_mae + '\', \'' + row.cod_insp_mae + '\')" style="margin-left: 10px;">';
+                html += '<i class="bi bi-file-earmark-text" style="color: #21A6A4;"></i></a>';
+                html += '</td>';
+                
+                html += '</tr>';
+            });
+            
+            html += '</table>';
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
+            
+            // Insertar HTML
+            $detalleGrid.html(html);
+            
+            // Intentar ajustar altura de la fila de detalles
+            setTimeout(function() {
+                try {
+                    $('#dg_001').datagrid('fixDetailRowHeight', index);
+                } catch(e) {
+                    console.warn('No se pudo ajustar la altura de la fila de detalles', e);
                 }
-            },
-            { field: 'cod_insp', title: 'Código Insp.', width: 100, align: 'center' },
-            { field: 'nom_insp', title: 'Nombre Inspección', width: 250, align: 'left' },
-            { field: 'resultado', title: 'Resultado', width: 120, align: 'center' },
-            { field: 'media', title: 'Media', width: 80, align: 'center' },
-            { field: 'txt_breve', title: 'Texto Breve', width: 150, align: 'left' },
-            { field: 'fec_vec_lote', title: 'Fecha Venc. Lote', width: 120, align: 'center', formatter: function(val) { 
-                return val ? formatter_date_SAP(val) : ''; 
-            }},
-            { field: 'fec_ini_insp', title: 'Fecha Inicio Insp.', width: 120, align: 'center', formatter: function(val) { 
-                return val ? formatter_date_SAP(val) : ''; 
-            }},
-            { field: 'fec_fin_insp', title: 'Fecha Fin Insp.', width: 120, align: 'center', formatter: function(val) { 
-                return val ? formatter_date_SAP(val) : ''; 
-            }}
-        ]]
-    }).datagrid('getPager').pagination({
-        beforePageText: 'Pag. ',
-        afterPageText: 'de {pages}',
-        displayMsg: 'Del {from} al {to}, de {total} items.'
+            }, 100);
+        },
+        error: function(xhr, status, error) {
+            console.error("Error en petición AJAX:", status, error);
+            $detalleGrid.html('<div style="padding:10px;text-align:center;color:red;">Error al cargar los datos: ' + status + '</div>');
+        }
     });
-    
-    $detalleGrid.data('initialized', true);
 }
 
     // Función para mostrar el gráfico estadístico
-    function mostrarGraficoEstadistico(cod_insp) {
-        let html = `
-        <div id="win_grafico" title="Gráfico Estadístico - Inspección ${cod_insp}" class="easyui-layout" style="width:600px;height:400px;">
-            <div style="padding:20px;text-align:center;">
-                <h3>Datos Estadísticos</h3>
-                <p>Código de Inspección: ${cod_insp}</p>
-                <div id="grafico-contenedor" style="width:100%;height:250px;border:1px solid #ddd;"></div>
-            </div>
-        </div>`;
+    // Función para mostrar el gráfico estadístico
+    // Función para mostrar el gráfico estadístico
+function mostrarGraficoEstadistico(cod_insp, cod_producto_mae) {
+    // Capturar los valores de las fechas antes de la llamada AJAX
+    var fechaDesde = $('#dt_fecha_desde').datebox('getValue') || '-';
+    var fechaHasta = $('#dt_fecha_fin').datebox('getValue') || '-';
+    
+    // Obtener información adicional mediante AJAX
+    $.ajax({
+        url: url_consulta,
+        type: 'POST',
+        data: {
+            _token: '{{ csrf_token() }}',
+            _acc: 'obtenerInfoDetalle',
+            cod_producto_mae: cod_producto_mae,
+            cod_insp_mae: cod_insp
+        },
+        success: function(response) {
+            // Crear estructura del modal con información básica
+            let html = `
+            <div id="win_grafico" class="easyui-window" title="Gráfico Estadístico" style="width:600px;height:400px;">
+                <div class="easyui-layout" data-options="fit:true">
+                    <div data-options="region:'center'" style="padding:15px;">
+                        <div style="margin-bottom:15px;">
+                            <table class="table-detalle" style="width:100%;">
+                                <tr>
+                                    <th style="width:30%;">Producto:</th>
+                                    <td style="width:70%;">${cod_producto_mae} - ${response.nombreProducto || ''}</td>
+                                </tr>
+                                <tr>
+                                    <th>Inspección:</th>
+                                    <td>${cod_insp} - ${response.nombreInspeccion || ''}</td>
+                                </tr>
+                                <tr>
+                                    <th>Período:</th>
+                                    <td>${fechaDesde} al ${fechaHasta}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        
+                        <div id="grafico-contenedor" style="width:100%;height:250px;border:1px solid #ddd;"></div>
+                    </div>
+                    <div data-options="region:'south',border:false" style="text-align:center;padding:5px;">
+                        <a href="javascript:void(0)" class="easyui-linkbutton" onclick="cerrarGrafico()">Cerrar</a>
+                    </div>
+                </div>
+            </div>`;
 
-        if ($('#win_grafico')) {
-            $('#win_grafico').window('close');
-            $('#win_grafico').empty();
-            $('#win_grafico').remove();
+            // Si ya existe una ventana, la cerramos
+            if ($('#win_grafico').length) {
+                $('#win_grafico').window('close');
+                $('#win_grafico').remove();
+            }
+            
+            $('body').append(html);
+            
+            $('#win_grafico').window({
+                modal: true,
+                collapsible: false,
+                closable: true,
+                minimizable: false,
+                maximizable: false,
+                closed: false,
+                center: true,
+                resizable: false
+            });
+            
+            // Aquí iría la lógica para cargar el gráfico
+            $('#grafico-contenedor').html('<div style="margin-top:100px;text-align:center;">Gráfico estadístico para la inspección</div>');
+        },
+        error: function() {
+            // Versión simplificada sin información adicional
+            let html = `
+            <div id="win_grafico" class="easyui-window" title="Gráfico Estadístico - Inspección ${cod_insp}" style="width:600px;height:400px;">
+                <div class="easyui-layout" data-options="fit:true">
+                    <div data-options="region:'center'" style="padding:20px;text-align:center;">
+                        <h3>Datos Estadísticos</h3>
+                        <p>Código de Inspección: ${cod_insp}</p>
+                        <p>Código Producto: ${cod_producto_mae}</p>
+                        <div id="grafico-contenedor" style="width:100%;height:250px;border:1px solid #ddd;"></div>
+                    </div>
+                    <div data-options="region:'south',border:false" style="text-align:center;padding:5px;">
+                        <a href="javascript:void(0)" class="easyui-linkbutton" onclick="cerrarGrafico()">Cerrar</a>
+                    </div>
+                </div>
+            </div>`;
+            
+            if ($('#win_grafico').length) {
+                $('#win_grafico').window('close');
+                $('#win_grafico').remove();
+            }
+            
+            $('body').append(html);
+            
+            $('#win_grafico').window({
+                modal: true,
+                collapsible: false,
+                closable: true,
+                minimizable: false,
+                maximizable: false,
+                closed: false,
+                center: true,
+                resizable: false
+            });
+            
+            $('#grafico-contenedor').html('<div style="margin-top:100px;">Gráfico estadístico para la inspección ' + cod_insp + ' del producto ' + cod_producto_mae + '</div>');
         }
-        
-        $('body').append(html);
-        
-        $('#win_grafico').window({
-            modal: true,
-            collapsible: false,
-            closable: true,
-            minimizable: false,
-            maximizable: false,
-            closed: false,
-            center: true,
-            resizable: false
-        });
-        
-        // Simulación de gráfico (implementar según necesidades)
-        $('#grafico-contenedor').html('<div style="margin-top:100px;">Gráfico estadístico para la inspección ' + cod_insp + '</div>');
+    });
+}
+    
+    function cerrarGrafico() {
+        $('#win_grafico').window('close');
     }
 
     function listar_datagrid() {
@@ -301,7 +600,7 @@
     function limpieza_filtros() {
         $('#cmb_producto').combobox('clear');
         $('#dt_fecha_desde').datebox('clear');
-        $('#dt_fecha_fin').datebox('clear');
+        $('#dt_fecha_fin').datebox('setValue', hoy);
         listar_datagrid();
     }
 
