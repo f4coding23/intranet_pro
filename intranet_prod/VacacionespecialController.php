@@ -315,6 +315,63 @@ class VacacionespecialController extends ControllerBase
         ));
     }
 
+    public function actualizarVacacionTemp()
+    {
+        // $this->sessionObj->checkJsonRequest($this->getAppName(), "actualizarVacacionTemp");
+        $response = ['Result' => 'ERROR', 'Message' => ''];
+
+        try {
+            // Obtener los datos enviados por AJAX
+            $idVacacionTemp = $this->getInput('id_vacacion_temp');
+            $fechaInicio = $this->getInput('fecha_inicio');
+            $fechaFin = $this->getInput('fecha_fin');
+            $idSolicitante = $this->getInput('id_solicitante');
+            $idVacaEspecial = $this->getInput('id_vaca_especial'); // Aunque no lo uses directamente aquí, puede ser útil para auditoría o redirección
+
+            // Validar que los datos requeridos estén presentes
+            if (empty($idVacacionTemp) || empty($fechaInicio) || empty($fechaFin) || empty($idSolicitante)) {
+                throw new Exception('Faltan datos obligatorios para actualizar la vacación temporal.');
+            }
+
+            // Formatear las fechas al formato esperado por SQL Server (YYYY-MM-DD)
+            $fechaInicioFormateada = DateTime::createFromFormat('d/m/Y', $fechaInicio);
+            $fechaFinFormateada = DateTime::createFromFormat('d/m/Y', $fechaFin);
+
+            if (!$fechaInicioFormateada || !$fechaFinFormateada) {
+                throw new Exception('El formato de fecha es incorrecto (DD/MM/YYYY).');
+            }
+
+            $fechaInicioSQL = $fechaInicioFormateada->format('Y-m-d');
+            $fechaFinSQL = $fechaFinFormateada->format('Y-m-d');
+
+            // Cargar el modelo
+            require_once $this->getDefaultModelName();
+            $vacacionEspecialModelObj = new VacacionespecialModel();
+
+            // Llamar a la función del modelo para actualizar la vacación temporal
+            $resultado = $vacacionEspecialModelObj->actualizarVacacionTemporal(
+                $idVacacionTemp,
+                $idSolicitante,
+                $fechaInicioSQL,
+                $fechaFinSQL
+            );
+
+            if ($resultado['existeRegistro']) {
+                $response['Message'] = $resultado['mensaje'];
+            } else {
+                $response['Result'] = 'OK';
+                $response['Message'] = $resultado['mensaje'];
+                // $this->sessionObj->RegisterAccion($this->getAppName(), 'actualizarVacacionTemp', $idVacacionTemp); // Registrar acción de auditoría
+            }
+
+        } catch (Exception $e) {
+            $response['Message'] = 'Error al actualizar la vacación temporal: ' . $e->getMessage();
+        }
+
+        // Devolver respuesta JSON
+        $this->view->showJSONPlane(['response' => $response]);
+    }
+
     public function exportar($master = false)
     {
         $app = $this->getAppName();

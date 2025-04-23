@@ -341,450 +341,545 @@ $(function () {
               edit: false,
               create: false,
               display: function (data) {
-                  var btnGroup = $('<div class="btn-group" role="group"></div>');
-  
-                  try {
-                      // Botón Editar
-                      var btnEditar = $(
-                          '<button data-style="slide-up" class="btn btn-primary btn-xs ladda-button" title="Editar Solicitud"><span class="ladda-label"><i class="glyphicon glyphicon-pencil"></i></span></button>'
-                      );
-                      var btnLdEditar = Ladda.create(btnEditar[0]);
-                      btnEditar.click(function () {
-                          btnLdEditar.start();
-                          abrirModalEditar(data.record);
-                          btnLdEditar.stop();
-                      });
-                      btnGroup.append(btnEditar);
-  
-                      // Botón eliminar
-                      var btnEliminar = $(
-                          '<button data-style="slide-up" class="btn btn-ac btn-xs ladda-button" title="Eliminar Solicitud"><span class="ladda-label"><i class="glyphicon glyphicon-trash"></i></span></button>'
-                      );
-                      var btnLdEliminar = Ladda.create(btnEliminar[0]);
-                      btnEliminar.click(function () {
-                          btnLdEliminar.start();
-                          $.confirm({
-                              theme: "warning",
-                              icon: "fa fa-exclamation-triangle",
-                              title: "¡Eliminar!",
-                              content:
-                                  "¿Esta seguro de eliminar el registro?, esta acción no podrá ser revertida.",
-                              confirm: function () {
-                                  $.post(
-                                      $getAppName + "/borrar/",
-                                      { id_vaca_especial: data.record.id_vaca_especial },
-                                      function (response) {
-                                          if (response.Result === "OK") {
-                                              btnLdEliminar.stop();
-                                              $("#vacacionesespecialesContainer").jtable("reload");
-                                          } else {
-                                              showConfirmWarning(
-                                                  response.Message || "No se pudo eliminar el registro"
-                                              );
-                                          }
-                                      },
-                                      "json"
-                                  ).fail(function (xhr, status, error) {
-                                      console.error("Error en borrar:", status, error);
-                                      console.error("Respuesta del servidor:", xhr.responseText);
-                                      btnLdEliminar.stop();
-                                      showConfirmError(
-                                          "Ocurrió un Error al intentar comunicarse con el servidor"
-                                      );
-                                  });
-                              },
-                              cancel: function () {
-                                  btnLdEliminar.stop();
-                              },
-                          });
-                      });
-                      btnGroup.append(btnEliminar);
-                  } catch (e) {
-                      console.warn("Error en display de acciones:", e);
+                console.log("Data record:", data.record);
+                var btnEditar;
+            
+                var btnGroup = $('<div class="btn-group" role="group"></div>');
+            
+                try {
+                  //   // Botón Editar
+                  //   var btnEditar = $(
+                  //     '<button data-style="slide-up" class="btn btn-primary btn-xs ladda-button" title="Editar Solicitud"><span class="ladda-label"><i class="glyphicon glyphicon-pencil"></i></span></button>'
+                  // );
+                  // var btnLdEditar = Ladda.create(btnEditar[0]);
+                  // btnEditar.click(function () {
+                  //     btnLdEditar.start();
+                  //     abrirModalEditar(data.record);
+                  //     btnLdEditar.stop();
+                  // });
+                  // btnGroup.append(btnEditar);
+
+                    // Obtener la fecha actual
+                  var fechaHoy = new Date();
+                  fechaHoy.setHours(0, 0, 0, 0); // Resetear la hora para comparar solo fechas
+                  
+                  // Convertir fechas del registro a objetos Date
+                  var fechaInicio = new Date(data.record.fecha_inicio.date);
+                  var fechaFin = new Date(data.record.fecha_fin.date);
+                  
+                  // Solo mostrar el botón editar si ambas fechas son futuras
+                  if (fechaInicio > fechaHoy && fechaFin > fechaHoy) {
+                    // Botón Editar
+                    var btnEditar = $(
+                      '<button data-style="slide-up" class="btn btn-ac btn-xs ladda-button" title="Editar Solicitud"><span class="ladda-label"><i class="glyphicon glyphicon-pencil"></i></span></button>'
+                    );
+                    var btnLdEditar = Ladda.create(btnEditar[0]);
+                    btnEditar.click(function () {
+                      btnLdEditar.start();
+                      abrirModalEditar(data.record);
+                      btnLdEditar.stop();
+                    });
+                    btnGroup.append(btnEditar);
                   }
-  
-                  return btnGroup;
-              },
+            
+                    var btnEliminar = $(
+                        '<button data-style="slide-up" class="btn btn-ac btn-xs ladda-button" title="Eliminar Solicitud"><span class="ladda-label"><i class="glyphicon glyphicon-trash"></i></span></button>'
+                    );
+                    var btnLdEliminar = Ladda.create(btnEliminar[0]);
+                    btnEliminar.click(function () {
+                        btnLdEliminar.start();
+                        $.confirm({
+                            theme: "warning",
+                            icon: "fa fa-exclamation-triangle",
+                            title: "¡Eliminar!",
+                            content:
+                                "¿Esta seguro de eliminar el registro?, esta acción no podrá ser revertida.",
+                            confirm: function () {
+                                $.post(
+                                    $getAppName + "/borrar/",
+                                    { id_vaca_especial: data.record.id_vaca_especial },
+                                    function (response) {
+                                        if (response.Result === "OK") {
+                                            btnLdEliminar.stop();
+                                            $("#vacacionesespecialesContainer").jtable("reload");
+                                        } else {
+                                            showConfirmWarning(
+                                                response.Message || "No se pudo eliminar el registro"
+                                            );
+                                        }
+                                    },
+                                    "json"
+                                ).fail(function (xhr, status, error) {
+                                    console.error("Error en borrar:", status, error);
+                                    console.error("Respuesta del servidor:", xhr.responseText);
+                                    btnLdEliminar.stop();
+                                    showConfirmError(
+                                        "Ocurrió un Error al intentar comunicarse con el servidor"
+                                    );
+                                });
+                            },
+                            cancel: function () {
+                                btnLdEliminar.stop();
+                            },
+                        });
+                    });
+                    btnGroup.append(btnEliminar);
+            
+                } catch (e) {
+                    console.warn("Error en display de acciones:", e);
+                }
+            
+                return btnGroup;
+            },
           },
       },
   });
   
-  // Función reutilizable para abrir el modal para la creación
   function abrirModalFormulario() {
-      loading(true, "Obteniendo información para crear");
-      $.post(
-          $getAppName + "/indexCrear/",
-          {},
-          function (data) {
-              loading(false);
-              if (data.Result === "OK") {
-                  var template = $("#tplFrmModal").html();
-                  Mustache.parse(template);
+    loading(true, "Obteniendo información para crear");
+    $.post(
+      $getAppName + "/indexCrear/",
+      {},
+      function (data) {
+        loading(false);
+        if (data.Result === "OK") {
+          var template = $("#tplFrmModal").html();
+          Mustache.parse(template);
   
-                  var optionsRender = {
-                      action: $getAppName + "/crear",
-                      edit: false,
-                      empresa: data.empresa,
-                      submitText: "Generar Solicitud",
-                      formData: {},
-                  };
+          var optionsRender = {
+            action: $getAppName + "/crear",
+            edit: false, // Indicamos que estamos en modo creación
+            empresa: data.empresa,
+            submitText: "Generar Solicitud",
+            formData: {},
+          };
   
-                  var rendered = Mustache.render(template, optionsRender);
-                  $("#modalForm .modal-dialog .modal-content").html(rendered);
-                  $("#modalForm .modal-dialog").draggable({
-                      handle: ".modal-header",
-                  });
-                  setFunctionFormulario();
+          var rendered = Mustache.render(template, optionsRender);
+          $("#modalForm .modal-dialog .modal-content").html(rendered);
+          $("#modalForm .modal-dialog").draggable({
+            handle: ".modal-header",
+          });
   
-                  $("#modalForm").bootstrapModal({
-                      show: true,
-                      backdrop: false,
-                  });
-              } else {
-                  showConfirmWarning(
-                      data.Message || "No se pudo obtener la información para crear el registro"
-                  );
-              }
-          },
-          "json"
-      ).fail(function (xhr, status, error) {
-          console.error("Error en indexCrear:", status, error);
-          loading(false);
-          showConfirmError("Ocurrió un Error interno al obtener la información de creación");
-      });
+          // Asegurar la visibilidad del select de creación y ocultar el de edición
+          $("#qryColaborador").show();
+          $("#nombreColaboradorEditar").hide();
+  
+          // Asegurarse de que los botones estén visibles en modo creación
+          $("#limpiarCampos").show();
+          $("#btnSubmit").show();
+  
+          setFunctionFormulario(optionsRender.edit); // Pasar el valor de 'edit'
+  
+          $("#modalForm").bootstrapModal({
+            show: true,
+            backdrop: false,
+          });
+        } else {
+          showConfirmWarning(
+            data.Message || "No se pudo obtener la información para crear el registro"
+          );
+        }
+      },
+      "json"
+    ).fail(function (xhr, status, error) {
+      console.error("Error en indexCrear:", status, error);
+      loading(false);
+      showConfirmError("Ocurrió un Error interno al obtener la información de creación");
+    });
   }
   
-  // Nueva función para abrir el modal para la edición
-  function abrirModalEditar(rowData) {
-    loading(true, "Obteniendo información para editar");
-    $.post(
-        $getAppName + "/indexEditar/",
-        { id_vaca_especial: rowData.id_vaca_especial },
-        function (data) {
-            loading(false);
-            if (data.Result === "OK") {
-                var template = $("#tplFrmModal").html();
-                Mustache.parse(template);
 
-                var optionsRender = {
-                    action: $getAppName + "/editar",
-                    edit: true,
-                    empresa: data.empresa,
-                    submitText: "Guardar Cambios",
-                    formData: rowData,
-                };
-
-                var rendered = Mustache.render(template, optionsRender);
-                $("#modalForm .modal-dialog .modal-content").html(rendered);
-                $("#modalForm .modal-dialog").draggable({
-                    handle: ".modal-header",
-                });
-                setFunctionFormulario(true, rowData.fecha_inicio, rowData.fecha_fin);
-
-                // Pre-llenado de los campos del formulario
-                for (var key in rowData) {
-                    var input = $("#modalForm").find("[name='" + key + "']");
-                    if (input.length) {
-                        input.val(rowData[key]);
-                    }
-                    if (key.startsWith("fecha_") && rowData[key] && rowData[key].date) {
-                        $("#modalForm").find("[name='" + key + "']").val(moment(rowData[key].date).format("YYYY-MM-DD"));
-                    }
-                }
-
-                // Llenar y deshabilitar los combos selectores
-                llenarYDeshabilitarCombos(rowData);
-
-                $("#modalForm").bootstrapModal({
-                    show: true,
-                    backdrop: false,
-                });
-
-                // Cargar la tabla relacionada
-                cargarTablaVacacionesTemp(rowData.id_vaca_especial);
-            } else {
-                showConfirmWarning(
-                    data.Message || "No se pudo obtener la información para editar el registro"
-                );
-            }
-        },
-        "json"
-    ).fail(function (xhr, status, error) {
-        console.error("Error en indexEditar:", status, error);
-        loading(false);
-        showConfirmError("Ocurrió un Error interno al obtener la información de edición");
-    });
-}
-
-// Función para llenar y deshabilitar los combos
-function llenarYDeshabilitarCombos(rowData) {
-    // Llenar los combos con la información de la tabla
-    if (rowData.empresa) {
-        // Llenar combo de Empresa
-        $("#qryEmpresa").val(rowData.id_empresa || "");
-        $("#qryEmpresa").prop("disabled", true);
+/**
+ * Abrir modal para editar una vacación existente
+ */
+function abrirModalEditar(rowData) {
+  loading(true, "Obteniendo información para editar");
+  
+  $.post(
+    $getAppName + "/indexEditar/",
+    { id_vaca_especial: rowData.id_vaca_especial },
+    function (data) {
+      loading(false);
+      if (data.Result === "OK") {
+        // Renderizar plantilla
+        const template = $("#tplFrmModal").html();
+        Mustache.parse(template);
         
-        // Agregar opciones al combo de Gerencia si está vacío
-        if ($("#qryGerencia option").length <= 1 && rowData.gerencia) {
-            $("#qryGerencia").append(new Option(rowData.gerencia, rowData.id_unidad || "", true, true));
-        }
-        $("#qryGerencia").val(rowData.id_unidad || "");
-        $("#qryGerencia").prop("disabled", true);
+        const optionsRender = {
+          action: $getAppName + "/editar",
+          edit: true,
+          empresa: data.empresa,
+          submitText: "Guardar Cambios",
+          formData: rowData,
+        };
         
-        // Agregar opciones al combo de Departamento si está vacío
-        if ($("#qryDepartamento option").length <= 1 && rowData.departamento) {
-            $("#qryDepartamento").append(new Option(rowData.departamento, rowData.id_departamento || "", true, true));
-        }
-        $("#qryDepartamento").val(rowData.id_departamento || "");
-        $("#qryDepartamento").prop("disabled", true);
+        const rendered = Mustache.render(template, optionsRender);
+        $("#modalForm .modal-dialog .modal-content").html(rendered);
         
-        // Agregar opciones al combo de Área si está vacío
-        if ($("#qryArea option").length <= 1 && rowData.area) {
-            $("#qryArea").append(new Option(rowData.area, rowData.id_area || "", true, true));
-        }
-        $("#qryArea").val(rowData.id_area || "");
-        $("#qryArea").prop("disabled", true);
+        // Configurar UI para modo edición
+        $("#limpiarCampos, #btnSubmit").hide();
+        $("#qryColaborador").selectpicker('hide');
+        $("#qryColaboradorEditar").show();
         
-        // Agregar opciones al combo de Sección si está vacío
-        if ($("#qrySeccion option").length <= 1 && rowData.seccion) {
-            $("#qrySeccion").append(new Option(rowData.seccion, rowData.id_seccion || "", true, true));
+        // Ocultar botón de agregar inicialmente en modo edición
+        $("#addColaborador").hide();
+        
+        // Agregar estilos personalizados para modo edición
+        const $container = $("#qryColaborador").closest('.form-group');
+        $container.addClass("editar-activo");
+        
+        const style = document.createElement('style');
+        style.id = 'temp-styles';
+        style.innerHTML = `
+          .editar-activo #qryColaborador, 
+          .editar-activo .bootstrap-select:not([class*="col-"]):not([class*="form-control"]):not(.input-group-btn) {
+              display: none !important;
+          }
+          .editar-activo .dropdown-toggle[data-id="qryColaborador"] {
+              display: none !important;
+          }
+          .modal-open {
+              overflow: hidden;
+          }
+        `;
+        document.head.appendChild(style);
+        
+        // Llenar campos con datos existentes
+        if (rowData.id_solicitante && rowData.solicitante) {
+          $("#qryColaboradorEditar").empty()
+            .append(new Option(rowData.solicitante, rowData.id_solicitante, true, true));
         }
-        $("#qrySeccion").val(rowData.id_seccion || "");
-        $("#qrySeccion").prop("disabled", true);
-
-        $("#qryColaborador").prop("disabled", true);
+        
+        // Inicializar formulario y cargar datos
+        setFunctionFormulario(true, rowData.fecha_inicio, rowData.fecha_fin);
+        llenarYDeshabilitarCombos(rowData);
+        
+        // Mostrar modal y cargar datos relacionados
+        $("#modalForm").bootstrapModal({show: true, backdrop: false});
+        cargarTablaVacacionesTemp(rowData.id_vaca_especial);
+        
+        // Limpiar cuando se cierra el modal
+        $("#modalForm").one("hidden.bs.modal", function() {
+          $(".editar-activo").removeClass("editar-activo");
+          $("#temp-styles").remove();
+          $("#addColaborador").show(); // Restaurar botón al cerrar
+          $("body").css("overflow", "auto"); // Restaurar scroll
+        });
+      } else {
+        showConfirmWarning(data.Message || "No se pudo obtener la información");
+      }
     }
+  ).fail(function(xhr, status, error) {
+    console.error("Error en indexEditar:", status, error);
+    loading(false);
+    showConfirmError("Ocurrió un Error interno al obtener la información de edición");
+  });
 }
 
-// Función para cargar la tabla de Vacaciones Temporales relacionada
+/**
+ * Llenar y deshabilitar combos en base a datos de fila
+ */
+function llenarYDeshabilitarCombos(rowData) {
+  if (!rowData.empresa) return;
+  
+  // Establecer valores de formulario y deshabilitar campos
+  $("#qryEmpresa").val(rowData.id_empresa || "").prop("disabled", true);
+  
+  // Agregar opciones a selects si es necesario y establecer valores
+  if ($("#qryGerencia option").length <= 1 && rowData.gerencia) {
+    $("#qryGerencia").append(new Option(rowData.gerencia, rowData.id_unidad || "", true, true));
+  }
+  $("#qryGerencia").val(rowData.id_unidad || "").prop("disabled", true);
+  
+  if ($("#qryDepartamento option").length <= 1 && rowData.departamento) {
+    $("#qryDepartamento").append(new Option(rowData.departamento, rowData.id_departamento || "", true, true));
+  }
+  $("#qryDepartamento").val(rowData.id_departamento || "").prop("disabled", true);
+  
+  if ($("#qryArea option").length <= 1 && rowData.area) {
+    $("#qryArea").append(new Option(rowData.area, rowData.id_area || "", true, true));
+  }
+  $("#qryArea").val(rowData.id_area || "").prop("disabled", true);
+  
+  if ($("#qrySeccion option").length <= 1 && rowData.seccion) {
+    $("#qrySeccion").append(new Option(rowData.seccion, rowData.id_seccion || "", true, true));
+  }
+  $("#qrySeccion").val(rowData.id_seccion || "").prop("disabled", true);
+  
+  $("#qryColaborador").prop("disabled", true);
+}
+
+/**
+ * Cargar tabla de vacaciones temporales para una vacación especial finalizada
+ */
 function cargarTablaVacacionesTemp(idVacaEspecial) {
   loading(true, "Cargando Vacaciones Temporales...");
 
   $.post(
-      $getAppName + "/listarVacacionesTemp",
-      { id_vaca_especial: idVacaEspecial },
-      function (data) {
-          loading(false);
-
-          if (data.Result === "OK") {
-              console.log("Datos completos desde el backend:", data);
-
-              // Destruir la tabla anterior si ya estaba inicializada
-              $("#tableListaVE").jtable("destroy");
-
-              $("#tableListaVE").jtable({
-                  title: "Listado de Vacaciones Especiales",
-                  paging: true,
-                  pageSize: 10,
-                  sorting: false,
-                  actions: {
-                      listAction: function () {
-                          return $.Deferred(function ($dfd) {
-                              $dfd.resolve({
-                                  Result: "OK",
-                                  Records: data.Records,
-                                  TotalRecordCount: data.TotalRecordCount
-                              });
-                          });
-                      }
-                  },
-                  fields: {
-                    id_vacacion_temp: {
-                      title: "id_vacacion_temp",
-                      width: "12%",
-                      display: function (recordData) {
-                          return recordData.record.id_vacacion_temp;
-                      },
-                      list: false,
-                    },
-                      fecha_inicio: {
-                          title: "F. Inicio",
-                          width: "8%",
-                          display: function (recordData) {
-                            const fecha = recordData.record.fecha_inicio;
-                            const fechaFormateada = fecha && fecha.date ? fecha.date.split(" ")[0] : ""; // Solo fecha sin hora
-                            return fechaFormateada;
-                        },
-                      },
-                      fecha_fin: {
-                          title: "F. Fin",
-                          width: "8%",
-                          display: function (recordData) {
-                            const fecha = recordData.record.fecha_fin;
-                            const fechaFormateada = fecha && fecha.date ? fecha.date.split(" ")[0] : "";
-                            return fechaFormateada;
-                        },
-                      },
-                      empresa: {
-                          title: "Empresa",
-                          width: "12%",
-                          display: function (recordData) {
-                              return recordData.record.empresa;
-                          },
-                      },
-                      gerencia: {
-                          title: "Gerencia",
-                          width: "12%",
-                          display: function (recordData) {
-                              return recordData.record.gerencia;
-                          },
-                      },
-                      departamento: {
-                          title: "Departamento",
-                          width: "12%",
-                          display: function (recordData) {
-                              return recordData.record.departamento;
-                          },
-                      },
-                      area: {
-                          title: "Área",
-                          width: "12%",
-                          display: function (recordData) {
-                              return recordData.record.area;
-                          },
-                      },
-                      seccion: {
-                          title: "Sección",
-                          width: "12%",
-                          display: function (recordData) {
-                              return recordData.record.seccion;
-                          },
-                      },
-                      id_solicitante: {
-                          title: "Solicitante",
-                          width: "15%",
-                          display: function (recordData) {
-                              return recordData.record.solicitante;
-                          },
-                      },
-                      accion: {
-                          title: "Acción",
-                          width: "5%",
-                          display: function (recordData) {
-                              var btnGroup = $('<div class="btn-group" role="group"></div>');
-                              
-                              // Botón editar
-                              var btnEditar = $('<button class="btn btn-primary btn-xs ladda-button" title="Editar Vacación"><span class="ladda-label"><i class="glyphicon glyphicon-pencil"></i></span></button>');
-                              var btnLdEditar = Ladda.create(btnEditar[0]);
-                              btnEditar.click(function () {
-                                  btnLdEditar.start();
-                                  editarVacacionTemp(recordData.record);
-                                  btnLdEditar.stop();
-                              });
-                              btnGroup.append(btnEditar);
-                              
-                              // Botón eliminar
-                              // var btnEliminar = $('<button class="btn btn-ac btn-xs ladda-button" title="Eliminar Vacación"><span class="ladda-label"><i class="glyphicon glyphicon-trash"></i></span></button>');
-                              // var btnLdEliminar = Ladda.create(btnEliminar[0]);
-                              // btnEliminar.click(function () {
-                              //     btnLdEliminar.start();
-                              //     eliminarVacacionTemp(recordData.record.id_vacacion_temp);
-                              //     btnLdEliminar.stop();
-                              // });
-                              // btnGroup.append(btnEliminar);
-                              
-                              return btnGroup;
-                          },
-                      },
-                  },
-              });
-
-              // Esto carga los datos en la tabla desde la memoria
-              $("#tableListaVE").jtable("load");
-              
-              // Agregar un campo oculto para guardar el ID de la vacación temporal en edición
-              if ($("#id_vacacion_temp").length === 0) {
-                  $("<input>").attr({
-                      type: "hidden",
-                      id: "id_vacacion_temp",
-                      name: "id_vacacion_temp"
-                  }).appendTo("#frmModal");
-              }
-              
-              // Modificar el botón de agregar para que considere la edición
-              $("#addColaborador").off("click").on("click", function() {
-                  var btnLaddaAddColaborador = Ladda.create($("#addColaborador")[0]);
-                  btnLaddaAddColaborador.start();
-                  
-                  if ($("#frmModal").valid()) {
-                      var idVacacionTemp = $("#id_vacacion_temp").val();
-                      
-                      if (idVacacionTemp) {
-                          // Si hay ID, estamos actualizando una vacación temporal existente
-                          actualizarVacacionTemp(idVacacionTemp, btnLaddaAddColaborador);
-                      } else {
-                          // Si no hay ID, agregar nueva vacación como estaba antes
-                          // Tu código existente para agregar vacación
-                          // ...
-                      }
-                  } else {
-                      btnLaddaAddColaborador.stop();
-                  }
-              });
-
-          } else {
-              showConfirmWarning(data.Message || "No se pudieron cargar las Vacaciones Temporales.");
-          }
-      },
-      "json"
-  ).fail(function (xhr, status, error) {
-      console.error("Error al cargar Vacaciones Temporales:", status, error);
-      console.error("Respuesta del servidor:", xhr.responseText);
+    $getAppName + "/listarVacacionesTemp",
+    { id_vaca_especial: idVacaEspecial },
+    function (data) {
       loading(false);
-      showConfirmError("Ocurrió un error al cargar las Vacaciones Temporales.");
+      
+      if (data.Result === "OK") {
+        // Destruir tabla anterior si existe
+        $("#tableListaVE").jtable("destroy");
+        
+        // Inicializar nueva tabla
+        $("#tableListaVE").jtable({
+          title: "Listado de Vacaciones Especiales",
+          paging: true,
+          pageSize: 10,
+          sorting: false,
+          actions: {
+            listAction: function () {
+              return $.Deferred(function ($dfd) {
+                $dfd.resolve({
+                  Result: "OK",
+                  Records: data.Records,
+                  TotalRecordCount: data.TotalRecordCount
+                });
+              });
+            }
+          },
+          fields: {
+            id_vacacion_temp: {
+              title: "id_vacacion_temp",
+              width: "12%",
+              display: function (recordData) {
+                return recordData.record.id_vacacion_temp;
+              },
+              list: false,
+            },
+            fecha_inicio: {
+              title: "F. Inicio",
+              width: "8%",
+              display: function (recordData) {
+                const fecha = recordData.record.fecha_inicio;
+                return fecha && fecha.date ? fecha.date.split(" ")[0] : "";
+              },
+            },
+            fecha_fin: {
+              title: "F. Fin",
+              width: "8%",
+              display: function (recordData) {
+                const fecha = recordData.record.fecha_fin;
+                return fecha && fecha.date ? fecha.date.split(" ")[0] : "";
+              },
+            },
+            empresa: {
+              title: "Empresa",
+              width: "12%",
+              display: function (recordData) {
+                return recordData.record.empresa;
+              },
+            },
+            gerencia: {
+              title: "Gerencia",
+              width: "12%",
+              display: function (recordData) {
+                return recordData.record.gerencia;
+              },
+            },
+            departamento: {
+              title: "Departamento",
+              width: "12%",
+              display: function (recordData) {
+                return recordData.record.departamento;
+              },
+            },
+            area: {
+              title: "Área",
+              width: "12%",
+              display: function (recordData) {
+                return recordData.record.area;
+              },
+            },
+            seccion: {
+              title: "Sección",
+              width: "12%",
+              display: function (recordData) {
+                return recordData.record.seccion;
+              },
+            },
+            id_solicitante: {
+              title: "Solicitante",
+              width: "15%",
+              display: function (recordData) {
+                return recordData.record.solicitante;
+              },
+            },
+            accion: {
+              title: "Acción",
+              width: "5%",
+              display: function (recordData) {
+                const btnGroup = $('<div class="btn-group" role="group"></div>');
+                
+                // Botón editar
+                const btnEditar = $(
+                  '<button class="btn btn-primary btn-xs ladda-button" title="Editar Vacación"><span class="ladda-label"><i class="glyphicon glyphicon-pencil"></i></span></button>'
+                );
+                const btnLdEditar = Ladda.create(btnEditar[0]);
+                
+                btnEditar.click(function (e) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  
+                  btnLdEditar.start();
+                  window.recordTempSeleccionado = recordData.record;
+                  $("#id_vacacion_temp").val(recordData.record.id_vacacion_temp);
+                  
+                  editarVacacionTemp(recordData.record);
+                  btnLdEditar.stop();
+                  
+                  return false;
+                });
+                
+                btnGroup.append(btnEditar);
+                return btnGroup;
+              },
+            },
+          },
+        });
+
+        // Cargar datos en la tabla
+        $("#tableListaVE").jtable("load");
+        
+        // Agregar campo oculto para ID de vacación si no existe
+        if ($("#id_vacacion_temp").length === 0) {
+          $("<input>").attr({
+            type: "hidden",
+            id: "id_vacacion_temp",
+            name: "id_vacacion_temp"
+          }).appendTo("#frmModal");
+        }
+        
+        // Configurar botón de agregar para funcionalidad de edición/actualización
+        $("#addColaborador").off("click").on("click", function() {
+          const btnLaddaAddColaborador = Ladda.create(this);
+          btnLaddaAddColaborador.start();
+          
+          if ($("#frmModal").valid()) {
+            const idVacacionTemp = $("#id_vacacion_temp").val();
+            
+            if (idVacacionTemp) {
+              const recordTemp = window.recordTempSeleccionado;
+              actualizarVacacionTemp(idVacacionTemp, btnLaddaAddColaborador, recordTemp);
+            } else {
+              // Código para agregar una nueva vacación
+              btnLaddaAddColaborador.stop();
+            }
+          } else {
+            btnLaddaAddColaborador.stop();
+          }
+        });
+      } else {
+        showConfirmWarning(data.Message || "No se pudieron cargar las Vacaciones Temporales.");
+      }
+    }
+  ).fail(function (xhr, status, error) {
+    console.error("Error al cargar Vacaciones Temporales:", status, error);
+    loading(false);
+    showConfirmError("Ocurrió un error al cargar las Vacaciones Temporales.");
   });
 }
 
-// Función para actualizar la vacación temporal
-function actualizarVacacionTemp(idVacacionTemp, btnLadda) {
-    // Obtener los datos del formulario
-    var fechaInicio = $("#txtFechaInicio").val();
-    var fechaFin = $("#txtFechaFin").val();
-    var colaboradorId = $("#qryColaborador").val();
-    
-    // Validar datos
-    if (!fechaInicio || !fechaFin) {
-        showConfirmWarning("Los campos fecha inicio y fecha fin son obligatorios.");
-        btnLadda.stop();
-        return;
+/**
+ * Actualizar registro de vacación temporal
+ */
+function actualizarVacacionTemp(idVacacionTemp, btnLadda, recordTemp) {
+  // Obtener datos del formulario
+  const fechaInicio = $("#txtFechaInicio").val();
+  const fechaFin = $("#txtFechaFin").val();
+  const colaboradorId = $("#qryColaboradorEditar").val() || recordTemp.id_solicitante;
+  const idVacaEspecial = recordTemp.id_vaca_especial;
+  
+  // Validar datos
+  if (!fechaInicio || !fechaFin) {
+    showConfirmWarning("Los campos fecha inicio y fecha fin son obligatorios.");
+    btnLadda.stop();
+    return;
+  }
+  
+  // Validar rango de fechas
+  const momentInicio = moment(fechaInicio, "DD/MM/YYYY");
+  const momentFin = moment(fechaFin, "DD/MM/YYYY");
+  
+  if (momentInicio.isAfter(momentFin)) {
+    showConfirmWarning("La fecha de inicio no puede ser posterior a la fecha de fin.");
+    btnLadda.stop();
+    return;
+  }
+  
+  const diferenciaDias = momentFin.diff(momentInicio, "days") + 1; // +1 para incluir ambos días
+  if (diferenciaDias > maxDiasVacacionesEspeciales) {
+    showConfirmWarning(`El rango de fechas excede el límite de ${maxDiasVacacionesEspeciales} días permitido.`);
+    btnLadda.stop();
+    return;
+  }
+  
+  // Validar colaborador
+  if (!colaboradorId) {
+    showConfirmWarning("Debe seleccionar un colaborador.");
+    btnLadda.stop();
+    return;
+  }
+  
+  // Preparar datos para envío
+  const datosEnvio = {
+    id_vacacion_temp: recordTemp.id_vacacion_temp,
+    fecha_inicio: fechaInicio,
+    fecha_fin: fechaFin,
+    id_solicitante: colaboradorId,
+    id_vaca_especial: recordTemp.id_vaca_especial
+  };
+  
+  // Mostrar indicador de carga
+  loading(true, "Actualizando vacación temporal...");
+  
+  // Enviar solicitud
+  $.ajax({
+    url: $getAppName + "/actualizarVacacionTemp/",
+    type: "POST",
+    data: datosEnvio,
+    dataType: "json",
+    success: function(response) {
+      loading(false);
+      btnLadda.stop();
+      
+      if (response.Result === "OK") {
+        showConfirmSuccess("Vacación temporal actualizada correctamente");
+        
+        // Resetear formulario
+        $("#id_vacacion_temp").val("");
+        $("#txtFechaInicio").val("");
+        $("#txtFechaFin").val("");
+        
+        if ($("#qryColaborador").length > 0) {
+          $("#qryColaborador").val("");
+          try {
+            $("#qryColaborador").selectpicker("refresh");
+          } catch (e) {
+            console.warn("Error al refrescar selectpicker:", e);
+          }
+        }
+        
+        // Resetear texto del botón
+        $("#addColaborador").text("Agregar Colaborador");
+        
+        // Recargar datos
+        cargarTablaVacacionesTemp(idVacaEspecial);
+      } else {
+        showConfirmWarning(response.Message || "No se pudo actualizar la vacación temporal");
+      }
+    },
+    error: function(xhr, status, error) {
+      loading(false);
+      btnLadda.stop();
+      console.error("Error al actualizar vacación temporal:", status, error);
+      showConfirmError("Ocurrió un error al actualizar la vacación temporal");
     }
-    
-    // Enviar solicitud para actualizar
-    $.post(
-        $getAppName + "/actualizarVacacionTemp/",
-        {
-            id_vacacion_temp: idVacacionTemp,
-            fecha_inicio: fechaInicio,
-            fecha_fin: fechaFin,
-            id_solicitante: colaboradorId
-        },
-        function(response) {
-            btnLadda.stop();
-            if (response.Result === "OK") {
-                showConfirmSuccess("Vacación temporal actualizada correctamente");
-                
-                // Resetear el formulario
-                $("#id_vacacion_temp").val("");
-                $("#txtFechaInicio").val("");
-                $("#txtFechaFin").val("");
-                $("#qryColaborador").val("");
-                $("#qryColaborador").selectpicker("refresh");
-                
-                // Cambiar el texto del botón de nuevo a Agregar
-                $("#addColaborador").text("Agregar Colaborador");
-                
-                // Recargar la tabla
-                cargarTablaVacacionesTemp($("#id_vaca_especial").val());
-            } else {
-                showConfirmWarning(response.Message || "No se pudo actualizar la vacación temporal");
-            }
-        },
-        "json"
-    ).fail(function(xhr, status, error) {
-        btnLadda.stop();
-        console.error("Error al actualizar vacación temporal:", status, error);
-        showConfirmError("Ocurrió un error al actualizar la vacación temporal");
-    });
+  });
 }
 
 
@@ -794,56 +889,112 @@ function actualizarVacacionTemp(idVacacionTemp, btnLadda) {
   // para determinar a qué endpoint enviar los datos del formulario.
 
   // Función para actualizar la vacación temporal
-function actualizarVacacionTemp(idVacacionTemp, btnLadda) {
-  // Obtener los datos del formulario
-  var fechaInicio = $("#txtFechaInicio").val();
-  var fechaFin = $("#txtFechaFin").val();
-  var colaboradorId = $("#qryColaborador").val();
-  
-  // Validar datos
-  if (!fechaInicio || !fechaFin) {
-      showConfirmWarning("Los campos fecha inicio y fecha fin son obligatorios.");
-      btnLadda.stop();
-      return;
-  }
-  
-  // Enviar solicitud para actualizar
-  $.post(
-      $getAppName + "/actualizarVacacionTemp/",
-      {
-          id_vacacion_temp: idVacacionTemp,
-          fecha_inicio: fechaInicio,
-          fecha_fin: fechaFin,
-          id_solicitante: colaboradorId
-      },
-      function(response) {
-          btnLadda.stop();
-          if (response.Result === "OK") {
-              showConfirmSuccess("Vacación temporal actualizada correctamente");
-              
-              // Resetear el formulario
-              $("#id_vacacion_temp").val("");
-              $("#txtFechaInicio").val("");
-              $("#txtFechaFin").val("");
-              $("#qryColaborador").val("");
-              $("#qryColaborador").selectpicker("refresh");
-              
-              // Cambiar el texto del botón de nuevo a Agregar
-              $("#addColaborador").text("Agregar Colaborador");
-              
-              // Recargar la tabla
-              cargarTablaVacacionesTemp($("#id_vaca_especial").val());
-          } else {
-              showConfirmWarning(response.Message || "No se pudo actualizar la vacación temporal");
-          }
-      },
-      "json"
-  ).fail(function(xhr, status, error) {
-      btnLadda.stop();
-      console.error("Error al actualizar vacación temporal:", status, error);
-      showConfirmError("Ocurrió un error al actualizar la vacación temporal");
-  });
-}
+  // oficial
+  // function actualizarVacacionTemp(idVacacionTemp, btnLadda, recordTemp) {
+  //   console.log("Actualizar Vacación Temporal: ", recordTemp);
+  //   console.log('id vacaciontemp paramas:', idVacacionTemp);
+  //   // Obtener los datos del formulario
+  //   var fechaInicio = $("#txtFechaInicio").val();
+  //   var fechaFin = $("#txtFechaFin").val();
+  //   var colaboradorId = $("#qryColaboradorEditar").val();
+  //   var idVacaEspecial = recordTemp.id_vaca_especial;
+
+  //   console.log('id vacacion especial322:', idVacaEspecial);
+  //   console.log('colaboradorId:', colaboradorId);
+  //   console.log('fechaInicio:', fechaInicio);
+  //   console.log('fechaFin:', fechaFin);
+    
+  //   // Validar datos
+  //   if (!fechaInicio || !fechaFin) {
+  //     showConfirmWarning("Los campos fecha inicio y fecha fin son obligatorios.");
+  //     btnLadda.stop();
+  //     return;
+  //   }
+    
+  //   // Validar fechas - verificar que la fecha inicio no sea posterior a la fecha fin
+  //   var momentInicio = moment(fechaInicio, "DD/MM/YYYY");
+  //   var momentFin = moment(fechaFin, "DD/MM/YYYY");
+    
+  //   if (momentInicio.isAfter(momentFin)) {
+  //     showConfirmWarning("La fecha de inicio no puede ser posterior a la fecha de fin.");
+  //     btnLadda.stop();
+  //     return;
+  //   }
+    
+  //   // Calcular la diferencia de días para validar el límite máximo
+  //   var diferenciaDias = momentFin.diff(momentInicio, "days") + 1; // +1 para incluir ambos días
+  //   if (diferenciaDias > maxDiasVacacionesEspeciales) {
+  //     showConfirmWarning("El rango de fechas seleccionado excede el límite de " + maxDiasVacacionesEspeciales + " días permitido.");
+  //     btnLadda.stop();
+  //     return;
+  //   }
+    
+  //   // Verificar que el colaborador esté seleccionado (si es requerido)
+  //   if (!colaboradorId) {
+  //     showConfirmWarning("Debe seleccionar un colaborador.");
+  //     btnLadda.stop();
+  //     return;
+  //   }
+    
+  //   // Crear objeto con los datos que se enviarán al controlador
+  //   var datosEnvio = {
+  //     id_vacacion_temp: recordTemp.id_vacacion_temp,
+  //     fecha_inicio: fechaInicio,
+  //     fecha_fin: fechaFin,
+  //     id_solicitante: recordTemp.id_solicitante,
+  //     id_vaca_especial: recordTemp.id_vaca_especial
+  //   };
+    
+  //   // Mostrar los datos que se enviarán al controlador
+  //   console.log("Datos que se envían al controlador actualizarVacacionTemp:", datosEnvio);
+    
+  //   // Mostrar indicador de carga
+  //   loading(true, "Actualizando vacación temporal...");
+    
+  //   // Enviar solicitud para actualizar
+  //   $.ajax({
+  //     url: $getAppName + "/actualizarVacacionTemp/",
+  //     type: "POST",
+  //     data: datosEnvio,
+  //     dataType: "json",
+  //     success: function(response) {
+  //       // Mostrar la respuesta del controlador
+  //       console.log("Respuesta del controlador:", response);
+        
+  //       loading(false);
+  //       btnLadda.stop();
+        
+  //       if (response.Result === "OK") {
+  //         showConfirmSuccess("Vacación temporal actualizada correctamente");
+          
+  //         // Resetear el formulario
+  //         $("#id_vacacion_temp").val("");
+  //         $("#txtFechaInicio").val("");
+  //         $("#txtFechaFin").val("");
+          
+  //         if ($("#qryColaborador").length > 0) {
+  //           $("#qryColaborador").val("");
+  //           $("#qryColaborador").selectpicker("refresh");
+  //         }
+          
+  //         // Cambiar el texto del botón de nuevo a Agregar
+  //         $("#addColaborador").text("Agregar Colaborador");
+          
+  //         // Recargar la tabla
+  //         cargarTablaVacacionesTemp(idVacaEspecial);
+  //       } else {
+  //         showConfirmWarning(response.Message || "No se pudo actualizar la vacación temporal");
+  //       }
+  //     },
+  //     error: function(xhr, status, error) {
+  //       loading(false);
+  //       btnLadda.stop();
+  //       console.error("Error al actualizar vacación temporal:", status, error);
+  //       console.error("Detalles de la respuesta:", xhr.responseText);
+  //       showConfirmError("Ocurrió un error al actualizar la vacación temporal");
+  //     }
+  //   });
+  // }
   
   
   // Asegúrate de que setFunctionFormulario() esté definida en tu código para manejar el submit del formulario
@@ -969,51 +1120,99 @@ function actualizarVacacionTemp(idVacacionTemp, btnLadda) {
   // Función para mostrar datos de los combo en el modal
   function setFunctionFormulario(editar, fechaInicio, fechaFin) {
     obtenerLimiteDias();
-    editar = editar || false;
-    // Inicia el selectpicker con ajaxSelectPicker
-    if ($("#qryColaborador").length > 0) {
-      try {
-        $("#qryColaborador").selectpicker().ajaxSelectPicker(optColaborador);
-      } catch (e) {
-        console.error("Error al inicializar selectpicker:", e);
-      }
+editar = editar || false;
+
+// Inicia selectpicker en el elemento correcto según el modo
+if (!editar) { // Modo creación
+  if ($("#qryColaborador").length > 0) {
+    try {
+      $("#qryColaborador").selectpicker().ajaxSelectPicker(optColaborador);
+    } catch (e) {
+      console.error("Error al inicializar selectpicker en creación:", e);
     }
-
-    $("#divFechaInicio").datetimepicker(dateOptions);
-    $("#divFechaFin").datetimepicker(dateOptions);
-
-    if (editar) {
-      $("#divFechaInicio").data("DateTimePicker").minDate(moment().format("L"));
-      $("#divFechaInicio")
-        .data("DateTimePicker")
-        .maxDate(moment(fechaFin.date).format("L"));
-      $("#divFechaFin")
-        .data("DateTimePicker")
-        .minDate(moment(fechaInicio.date).format("L"));
-
-
-
-        $("#qryEmpresa").off("change");
-        $("#qryGerencia").off("change");
-        $("#qryDepartamento").off("change");
-        $("#qryArea").off("change");
-    } else {
-      var optMinDate = moment().format("L");
-      $("#divFechaInicio").data("DateTimePicker").minDate(optMinDate);
-      $("#divFechaFin").data("DateTimePicker").minDate(optMinDate);
+  }
+} else { // Modo edición
+  if ($("#qryColaboradorEditar").length > 0) {
+    try {
+      $("#qryColaboradorEditar").selectpicker().ajaxSelectPicker(optColaborador);
+    } catch (e) {
+      console.error("Error al inicializar selectpicker en edición:", e);
     }
+  }
+}
 
-    var maxFecha = moment().endOf("year").add(2, "years");
-    $("#divFechaFin").data("DateTimePicker").maxDate(maxFecha);
+// Inicializar datepickers una sola vez
+if (!$("#divFechaInicio").data("DateTimePicker")) {
+  $("#divFechaInicio").datetimepicker(dateOptions);
+}
 
-    $("#divFechaInicio").on("dp.change", function (e) {
-      $("#divFechaFin").data("DateTimePicker").minDate(e.date);
-    });
+if (!$("#divFechaFin").data("DateTimePicker")) {
+  $("#divFechaFin").datetimepicker(dateOptions);
+}
 
-    $("#divFechaFin").on("dp.change", function (e) {
-      $("#divFechaInicio").data("DateTimePicker").maxDate(e.date);
-      validarRangoDias();
-    });
+// Limpiar todas las restricciones previas
+$("#divFechaInicio").data("DateTimePicker").minDate(false);
+$("#divFechaInicio").data("DateTimePicker").maxDate(false);
+$("#divFechaFin").data("DateTimePicker").minDate(false);
+$("#divFechaFin").data("DateTimePicker").maxDate(false);
+
+var optMinDate = moment().format("L");
+
+if (editar && fechaInicio && fechaFin) {
+  var momentInicio = moment(fechaInicio.date);
+  var momentFin = moment(fechaFin.date);
+  
+  // Primero asignar las fechas
+  $("#divFechaInicio").data("DateTimePicker").date(momentInicio);
+  $("#divFechaFin").data("DateTimePicker").date(momentFin);
+  
+  // Verificar si las fechas son anteriores a hoy para ajustar minDate
+  var hoy = moment();
+  if (momentInicio.isBefore(hoy)) {
+    // Si la fecha inicio es anterior a hoy, usar esa como mínima
+    $("#divFechaInicio").data("DateTimePicker").minDate(momentInicio);
+  } else {
+    $("#divFechaInicio").data("DateTimePicker").minDate(optMinDate);
+  }
+  
+  // Asegurarse que fecha fin sea al menos igual a inicio
+  $("#divFechaFin").data("DateTimePicker").minDate(momentInicio);
+  
+  // Configurar maxDate para inicio con pequeño retraso
+  setTimeout(function() {
+    $("#divFechaInicio").data("DateTimePicker").maxDate(momentFin);
+  }, 100);
+
+  $("#qryEmpresa").off("change");
+  $("#qryGerencia").off("change");
+  $("#qryDepartamento").off("change");
+  $("#qryArea").off("change");
+} else {
+  // Limpiar valores
+  $("#divFechaInicio").data("DateTimePicker").clear();
+  $("#divFechaFin").data("DateTimePicker").clear();
+  
+  // Establecer restricciones para modo creación
+  $("#divFechaInicio").data("DateTimePicker").minDate(optMinDate);
+  $("#divFechaFin").data("DateTimePicker").minDate(optMinDate);
+  
+  var maxFecha = moment().endOf("year").add(2, "years");
+  $("#divFechaFin").data("DateTimePicker").maxDate(maxFecha);
+}
+
+// Configurar eventos
+$("#divFechaInicio").off("dp.change").on("dp.change", function (e) {
+  if (e.date) {
+    $("#divFechaFin").data("DateTimePicker").minDate(e.date);
+  }
+});
+
+$("#divFechaFin").off("dp.change").on("dp.change", function (e) {
+  if (e.date) {
+    $("#divFechaInicio").data("DateTimePicker").maxDate(e.date);
+    validarRangoDias();
+  }
+});
 
     function validarRangoDias() {
       var fechaInicioVal = $("#txtFechaInicio").val();
@@ -1629,20 +1828,23 @@ function actualizarVacacionTemp(idVacacionTemp, btnLadda) {
       },
     });
 
-    // Evento para limpiar el arreglo y la tabla al cerrar el modal
-    $("#modalForm").on("hidden.bs.modal", function () {
-      VEmasivo = []; // Limpiar el arreglo
-    $("#tableListaVE").jtable("reload"); // Recargar la tabla para reflejar los cambios
-    
-    // Habilitar los combos nuevamente
-    $("#qryEmpresa").prop("disabled", false);
-    $("#qryGerencia").prop("disabled", false);
-    $("#qryDepartamento").prop("disabled", false);
-    $("#qryArea").prop("disabled", false);
-    $("#qrySeccion").prop("disabled", false);
-      // VEmasivo = []; // Limpiar el arreglo
-      // $("#tableListaVE").jtable("reload"); // Recargar la tabla para reflejar los cambios
-    });
+   // Agregar evento para restaurar los botones cuando se cierra el modal
+$("#modalForm").on("hidden.bs.modal", function () {
+  // Mostrar los botones nuevamente cuando se cierra el modal
+  $("#limpiarCampos").show();
+  $("#btnSubmit").show();
+  
+  // Limpiar el arreglo y recargar la tabla
+  VEmasivo = [];
+  $("#tableListaVE").jtable("reload");
+  
+  // Habilitar los combos nuevamente
+  $("#qryEmpresa").prop("disabled", false);
+  $("#qryGerencia").prop("disabled", false);
+  $("#qryDepartamento").prop("disabled", false);
+  $("#qryArea").prop("disabled", false);
+  $("#qrySeccion").prop("disabled", false);
+});
 
     $("#limpiarCampos").on("click", function () {
       // Limpiar selects
@@ -1779,51 +1981,54 @@ $(document).ready(function() {
   $('.selectpicker').selectpicker(); // Inicializa todos los elementos con la clase 'selectpicker'
 });
 
-// Función para editar una vacación temporal
-$(document).ready(function() {
-  $('.selectpicker').selectpicker(); // Inicializa todos los selectpicker
-});
 
-// Función para editar una vacación temporal
+/**
+ * Editar una vacación temporal
+ */
 function editarVacacionTemp(recordData) {
-  console.log("editarVacacionTemp ejecutada con:", recordData);
-
-  // Establecer fechas
+  // Establecer fechas en el formulario
   if (recordData.fecha_inicio?.date) {
-      const fechaInicio = recordData.fecha_inicio.date.split(" ")[0].split("-").reverse().join("/");
-      $("#txtFechaInicio").val(fechaInicio);
-      $("#divFechaInicio").data("DateTimePicker").date(moment(fechaInicio, "DD/MM/YYYY"));
+    const fechaInicio = recordData.fecha_inicio.date.split(" ")[0].split("-").reverse().join("/");
+    $("#txtFechaInicio").val(fechaInicio);
+    $("#divFechaInicio").data("DateTimePicker").date(moment(fechaInicio, "DD/MM/YYYY"));
   }
 
   if (recordData.fecha_fin?.date) {
-      const fechaFin = recordData.fecha_fin.date.split(" ")[0].split("-").reverse().join("/");
-      $("#txtFechaFin").val(fechaFin);
-      $("#divFechaFin").data("DateTimePicker").date(moment(fechaFin, "DD/MM/YYYY"));
+    const fechaFin = recordData.fecha_fin.date.split(" ")[0].split("-").reverse().join("/");
+    $("#txtFechaFin").val(fechaFin);
+    $("#divFechaFin").data("DateTimePicker").date(moment(fechaFin, "DD/MM/YYYY"));
   }
 
-  // Establecer colaborador (mostrar select de edición, ocultar select de creación)
-  $("#qryColaboradorCrear").hide();
+  // Configurar campos de colaborador
+  $("#qryColaborador").hide();
   $("#qryColaboradorEditar").show();
-
-  // Limpia las opciones existentes en el select de edición
   $("#qryColaboradorEditar").empty();
-
-  // Agrega la opción del solicitante actual al select de edición y la selecciona
+  
   if (recordData.id_solicitante && recordData.solicitante) {
-      $("#qryColaboradorEditar").append(`<option value="${recordData.id_solicitante}" selected>${recordData.solicitante.trim()}</option>`);
+    $("#qryColaboradorEditar").val(recordData.id_solicitante);
+    $("#nombreColaboradorEditar").val(recordData.solicitante);
   }
 
-  // Refresca el selectpicker de edición
-  $("#qryColaboradorEditar").selectpicker('refresh');
-
-  // Guardar el ID
+  // Establecer ID de formulario y actualizar texto de botón
   $("#id_vacacion_temp").val(recordData.id_vacacion_temp);
-  $("#addColaborador").text("Actualizar Vacación");
-
-  // Scroll al formulario
-  $('html, body').animate({
-      scrollTop: $("#divFechaInicio").offset().top - 100
-  }, 500);
+  
+  // Mostrar botón de actualizar
+  $("#addColaborador").show().text("Actualizar Vacación");
+  
+  // Evitar problemas de scroll usando requestAnimationFrame para hacer que
+  // el scroll ocurra después de que el DOM se haya actualizado completamente
+  requestAnimationFrame(function() {
+    // Fijar el body para evitar scroll en el fondo
+    $("body").css("overflow", "hidden");
+    
+    // Usar setTimeout para asegurar que el contenido del modal está renderizado
+    setTimeout(function() {
+      // Hacer scroll suave al inicio del formulario
+      $('.modal-body').animate({
+        scrollTop: $("#divFechaInicio").position().top - 20
+      }, 300);
+    }, 100);
+  });
 }
 
 $('#miModal').on('show.bs.modal', function (event) {
@@ -1832,20 +2037,20 @@ $('#miModal').on('show.bs.modal', function (event) {
 
   if (isEditing) {
       // Modo Edición: Ocultar select de creación, mostrar select de edición
-      $("#qryColaboradorCrear").hide();
+      $("#qryColaborador").hide();
       $("#qryColaboradorEditar").show();
-      $("#qryColaboradorEditar").selectpicker('refresh'); // Refresca al mostrar
+      // $("#qryColaboradorEditar").selectpicker('refresh'); // Refresca al mostrar
   } else {
       // Modo Creación: Mostrar select de creación, ocultar select de edición
-      $("#qryColaboradorCrear").show();
+      $("#qryColaborador").show();
       $("#qryColaboradorEditar").hide();
-      $("#qryColaboradorCrear").selectpicker('refresh'); // Refresca al mostrar
+      // $("#qryColaborador").selectpicker('refresh'); // Refresca al mostrar
       // Aquí podrías cargar las opciones para la creación si aún no lo has hecho
   }
 });
 
 $('#miModal').on('hidden.bs.modal', function () {
-  $("#qryColaboradorCrear").hide();
+  $("#qryColaborador").hide();
   $("#qryColaboradorEditar").hide();
   // Opcional: Limpiar las opciones del select de edición al cerrar
   // $("#qryColaboradorEditar").empty().selectpicker('refresh');
@@ -1853,7 +2058,7 @@ $('#miModal').on('hidden.bs.modal', function () {
 
 // Función para obtener el valor del colaborador al guardar
 function obtenerValorColaborador() {
-  return $("#qryColaboradorEditar").is(":visible") ? $("#qryColaboradorEditar").val() : $("#qryColaboradorCrear").val();
+  return $("#qryColaboradorEditar").is(":visible") ? $("#qryColaboradorEditar").val() : $("#qryColaborador").val();
 }
 
 // Evento para inicializar/refrescar el selectpicker cuando el modal se muestra
@@ -1863,3 +2068,4 @@ function obtenerValorColaborador() {
 
 
 });
+// omar salazar

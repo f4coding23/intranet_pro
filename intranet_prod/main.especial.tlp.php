@@ -236,12 +236,11 @@
                         <div class="form-group">
                             <label class="col-md-2 control-label">Solicitante:</label>
                             <div class="col-md-10">
-                            <select name="qryColaborador" id="qryColaboradorCrear"
-                                class="form-control selectpicker with-ajax" data-live-search="true">
-                            </select>
-                            <select name="qryColaboradorEditar" id="qryColaboradorEditar"
-                                class="form-control selectpicker with-ajax" data-live-search="true" style="display: none;">
-                            </select>
+                                <select name="qryColaborador" id="qryColaborador"
+                                    class="form-control selectpicker with-ajax" data-live-search="true">
+                                </select>
+                                <input type="text" id="nombreColaboradorEditar" class="form-control" readonly/>
+                                <input type="hidden" name="qryColaboradorEditar" id="qryColaboradorEditar" />
                             </div>
                         </div>
                     </div>

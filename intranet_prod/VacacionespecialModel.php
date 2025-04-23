@@ -609,4 +609,27 @@ class VacacionespecialModel extends ModelBase
         $qryResult = $this->intra_db->Listar();
         return $qryResult;
     }
+
+    public function actualizarVacacionTemporal($idVacacionTemp, $idSolicitante, $fechaInicio, $fechaFin)
+    {
+        $rsp_existe = 0;
+        $rsp_mensaje = '';
+
+        $params = array(
+            array($idVacacionTemp, SQLSRV_PARAM_IN),
+            array($idSolicitante, SQLSRV_PARAM_IN),
+            array($fechaInicio, SQLSRV_PARAM_IN),
+            array($fechaFin, SQLSRV_PARAM_IN),
+            array(&$rsp_existe, SQLSRV_PARAM_OUT),
+            array(&$rsp_mensaje, SQLSRV_PARAM_OUT, SQLSRV_PHPTYPE_STRING(SQLSRV_ENC_CHAR), SQLSRV_SQLTYPE_NVARCHAR(200))
+        );
+
+        $sqlQuery = "{CALL USP_UPDATE_VACACIONES_ESPECIALES_TEMP(?,?,?,?,?,?)}";
+        $this->intra_db->CallSP($sqlQuery, $params);
+
+        $response['existeRegistro'] = $rsp_existe;
+        $response['mensaje'] = trim($rsp_mensaje);
+
+        return $response;
+    }
 }
