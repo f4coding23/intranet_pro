@@ -10,6 +10,8 @@ var tipocondicion = 0;
 var pendientesPrevios = 0;
 var programadosPrevios = 0;
 
+var datosOriginales = null;
+
 /*var localeDate = {
     "separator": " - ",
     "applyLabel": "Aplicar",
@@ -923,6 +925,18 @@ function setFunctionFormulario(editar, fechaInicio, fechaFin) {
     if (json.data.length > 0) {
       var datosIniciales = json.data[0]; // Captura la primera fila
 
+      // Guardar los datos originales
+      if (datosOriginales === null) {
+        datosOriginales = {
+          trunco: parseFloat(datosIniciales.trunco) || 0,
+          ganado: parseFloat(datosIniciales.ganado) || 0,
+          vencido: parseFloat(datosIniciales.vencido) || 0,
+          programado: parseFloat(datosIniciales.programado) || 0,
+          por_programar: parseFloat(datosIniciales.por_programar) || 0
+        };
+        console.log("Datos originales guardados:", datosOriginales);
+      }
+
       var truncas = parseFloat(datosIniciales.trunco) || 0;
       var pendientes = parseFloat(datosIniciales.ganado) || 0;
       var vencidas = parseFloat(datosIniciales.vencido) || 0;
@@ -932,7 +946,7 @@ function setFunctionFormulario(editar, fechaInicio, fechaFin) {
         programadosPrevios = programadas;
         $("#programadosPrevios").val(programadosPrevios);
       } else {
-        console.error("No entró en el if. Valor actual:", programadosPrevios);
+        console.debug("programadosPrevios ya tiene un valor:", programadosPrevios);
       }
     }
   });
@@ -1226,73 +1240,191 @@ function loading(mostrar, mensaje) {
   }
 }
 
-// validar
+// validar omar 322
+
+/**
+ * Valida el tiempo de vacaciones solicitado según los días disponibles
+ * @param {object} fechaInicio - Fecha de inicio de vacaciones (objeto moment.js)
+ * @param {object} fechaFin - Fecha de fin de vacaciones (objeto moment.js)
+ * @returns {boolean} - Verdadero si la validación es exitosa, falso en caso contrario
+ */
 function validarTiempo(fechaInicio, fechaFin) {
   var condicion = $("#cboCondicion").val();
   var numDias = fechaFin.diff(fechaInicio, "days") + 1;
-  var regConsolidado = tblConsolidado.row(0).data();
-  var disponible = 0;
-
-  if (pendientesPrevios == 0) {
-    pendientesPrevios = Math.max(
-      0,
-      (parseFloat(regConsolidado.vencido) || 0) +
-        (parseFloat(regConsolidado.ganado) || 0) -
-        (parseFloat(regConsolidado.programado) || 0)
-    );
+  
+  // Verificar si existe la tabla de consolidado
+  if (typeof tblConsolidado === 'undefined' || tblConsolidado === null) {
+    console.error("Error: No se encontró la tabla de consolidado de vacaciones");
+    showConfirmWarning("No se pueden validar las vacaciones porque no se encontraron los datos consolidados.");
+    return false;
   }
-
+  
+  // Obtener datos de la tabla
+  var regConsolidado;
+  try {
+    regConsolidado = tblConsolidado.row(0).data();
+    if (!regConsolidado) {
+      console.error("No se encontraron datos en la tabla de consolidado");
+      return false;
+    }
+  } catch (error) {
+    console.error("Error al obtener datos de la tabla:", error);
+    return false;
+  }
+  
+  // Actualizar campo de cantidad de días
   $("#txtCantidadDias").val(numDias);
-
-  if (!regConsolidado) return false;
+  
+  // Inicializar variables
+  var disponible = 0;
+  var diasDisponiblesVencido = 0;
+  var diasDisponiblesGanado = 0;
+  var tipoVacacion = "";
+  
+  // Convertir valores a números para evitar problemas
+  var vencido = parseFloat(regConsolidado.vencido) || 0;
+  var ganado = parseFloat(regConsolidado.ganado) || 0;
+  var trunco = parseFloat(regConsolidado.trunco) || 0;
+  var programado = parseFloat(regConsolidado.programado) || 0;
+  var porProgramar = parseFloat(regConsolidado.por_programar) || 0;
+  
+  // Calcular pendientes previos si es necesario
+  if (typeof pendientesPrevios === 'undefined' || pendientesPrevios == 0) {
+    pendientesPrevios = Math.max(0, vencido + ganado - programado);
+  }
+  
+  console.log('Datos actuales de vacaciones:', regConsolidado);
+  console.log('Días solicitados:', numDias);
+  console.log('Pendientes previos:', pendientesPrevios);
 
   // Validar que no seleccione truncas si tiene vencidas o ganadas
   if (condicion == "2") {
-    if (
-      Math.max(
-        0,
-        (parseFloat(regConsolidado.vencido) || 0) +
-          (parseFloat(regConsolidado.ganado) || 0) -
-          programadosPrevios
-      ) > 0
-    ) {
-      showConfirmWarning(
-        "No puede seleccionar adelanto a cuenta de vacaciones truncas, si dispone de vacaciones vencidas o pendientes."
-      );
-      return false;
+    // IMPORTANTE: Para esta validación, usar los datos originales si están disponibles
+    if (typeof datosOriginales !== 'undefined' && datosOriginales !== null) {
+      var vencidoOriginal = datosOriginales.vencido;
+      var ganadoOriginal = datosOriginales.ganado;
+      var programadoOriginal = datosOriginales.programado;
+      
+      // Calcular disponibles usando los valores originales
+      var disponiblesVencido = Math.max(0, vencidoOriginal - programadoOriginal);
+      var disponiblesGanado = 0;
+      
+      if (programadoOriginal > vencidoOriginal) {
+        // Si programado > vencido, el restante va a ganado
+        var programadoRestante = programadoOriginal - vencidoOriginal;
+        disponiblesGanado = Math.max(0, ganadoOriginal - programadoRestante);
+      } else {
+        disponiblesGanado = ganadoOriginal;
+      }
+      
+      var disponibleOriginal = disponiblesVencido + disponiblesGanado;
+      
+      console.log("Validando con datos originales:", {
+        vencido: vencidoOriginal,
+        ganado: ganadoOriginal,
+        programado: programadoOriginal,
+        disponible: disponibleOriginal
+      });
+      
+      if (disponibleOriginal > 0) {
+        showConfirmWarning(
+          "No puede seleccionar adelanto a cuenta de vacaciones truncas, si dispone de vacaciones vencidas o pendientes."
+        );
+        return false;
+      }
+    } else {
+      // Si no tenemos datos originales, validar con los actuales
+      if (pendientesPrevios > 0 || porProgramar > 0) {
+        showConfirmWarning(
+          "No puede seleccionar adelanto a cuenta de vacaciones truncas, si dispone de vacaciones vencidas o pendientes."
+        );
+        return false;
+      }
     }
   }
-
+  
   // Calcular disponibilidad según condición
   if (condicion == "1") {
-    // Para condición 1, usar primero vencidas, luego ganadas
-    if (parseFloat(regConsolidado.vencido) > 0) {
-      disponible =
-        parseFloat(regConsolidado.vencido) -
-        parseFloat(regConsolidado.programado);
-      tipoVacacion = "vencidas";
+    // Para condición 1, usar disponibilidad total correctamente
+    
+    // IMPORTANTE: Usar directamente por_programar si está disponible
+    // Este valor ya debería tener calculado correctamente lo disponible
+    if (porProgramar > 0) {
+      disponible = porProgramar;
+      tipoVacacion = "pendientes por programar";
+      
+      console.log('Usando valor por_programar:', porProgramar);
     } else {
-      disponible =
-        parseFloat(regConsolidado.ganado) -
-        parseFloat(regConsolidado.programado);
-      tipoVacacion = "pendientes";
+      // Calcular disponible como se hacía antes si por_programar no está disponible
+      
+      // Primero restamos programado de vencido
+      if (programado <= vencido) {
+        diasDisponiblesVencido = vencido - programado;
+        diasDisponiblesGanado = ganado;
+      } else {
+        // Si programado > vencido, el restante va a ganado
+        diasDisponiblesVencido = 0;
+        var programadoRestante = programado - vencido;
+        diasDisponiblesGanado = Math.max(0, ganado - programadoRestante);
+      }
+      
+      // Total disponible es la suma de ambos
+      disponible = diasDisponiblesVencido + diasDisponiblesGanado;
+      
+      console.log('Disponible calculado:', {
+        vencido: diasDisponiblesVencido,
+        ganado: diasDisponiblesGanado,
+        total: disponible
+      });
+      
+      // Verificar si los días solicitados superan lo disponible en vencidas
+      if (numDias <= diasDisponiblesVencido) {
+        tipoVacacion = "vencidas";
+      } else if (numDias <= disponible) {
+        // Si no alcanza solo con vencidas pero sí con ganadas
+        var diasDeVencidas = Math.min(numDias, diasDisponiblesVencido);
+        var diasDeGanadas = numDias - diasDeVencidas;
+        
+        tipoVacacion = "vencidas y pendientes";
+        
+        // Mostrar mensaje informativo sobre distribución de días
+        if (diasDeVencidas > 0 && diasDeGanadas > 0) {
+          showConfirmInfo(
+            "Se tomarán " + diasDeVencidas.toFixed(2) + " días de vacaciones vencidas y " +
+            diasDeGanadas.toFixed(2) + " días de vacaciones pendientes."
+          );
+        }
+      } else {
+        // Si no alcanza ni con ambas
+        tipoVacacion = "vencidas y pendientes";
+      }
     }
+    
   } else if (condicion == "2") {
     // Para condición 2, solo truncas
-    disponible =
-      parseFloat(regConsolidado.trunco) - parseFloat(regConsolidado.programado);
+    disponible = trunco;
     tipoVacacion = "truncas";
+  } else if (condicion == "3") {
+    // Para condición 3, no validamos disponibilidad
+    return true;
   }
 
+  // Validar disponibilidad para condiciones 1 y 2
   if (condicion != "3") {
     if (numDias > disponible) {
-      showConfirmWarning(
-        "Solo tienes disponible " +
+      var mensaje = "Solo tienes disponible " +
           disponible.toFixed(2) +
           " días en el periodo de vacaciones " +
-          tipoVacacion +
-          ". Por favor, ajusta la cantidad de días solicitados."
-      );
+          tipoVacacion;
+          
+      // Si hay vacaciones truncas disponibles, sugerir usarlas
+      if (trunco > 0 && condicion == "1") {
+        mensaje += ". Te recomendamos considerar tomar vacaciones truncas si necesitas más días.";
+      } else {
+        mensaje += ". Por favor, ajusta la cantidad de días solicitados.";
+      }
+      
+      showConfirmWarning(mensaje);
       return false;
     }
   }
